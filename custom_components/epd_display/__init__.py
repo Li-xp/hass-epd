@@ -545,6 +545,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     frontend_dir = os.path.join(os.path.dirname(__file__), "frontend")
     await hass.http.async_register_static_paths([
         StaticPathConfig("/epd_display/editor", os.path.join(frontend_dir, "editor.html"), False),
+        StaticPathConfig("/epd_display/editor.js", os.path.join(frontend_dir, "editor.js"), False),
     ])
     _LOGGER.info("EPD editor at /epd_display/editor")
     return True
