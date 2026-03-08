@@ -1245,6 +1245,36 @@ function _drawCalendarPreview(ctx, el){
 
 // ── Init
 redraw();refreshList();
+
+// ── 将所有被 HTML inline onclick 调用的函数挂载到 window
+// 解决 HA panel iframe CSP 环境下 "showPage is not defined" 问题
+Object.assign(window,{
+  showPage,toast,closeModal,
+  // 发送页
+  sendUpload,sendUrl,
+  // 画布/工具
+  applyCanvas,clearBg,setTool,openBgPicker,
+  // 图层/元素
+  addEntityText,delElem,delSelected,clearAll,
+  // 属性面板
+  applyProps,pickEntityForProp,refreshEntityState,previewComputed,
+  pickEntityForTbProp,refreshTbEntityState,previewTbComputed,
+  setTbMode,pickEntityForTb,
+  clearPropSvgContent,fetchCalPreviewForProp,pickCalEntityForProp,
+  openImgPickerForProp,propLoadLocalImg,reloadImgPreview,
+  // 实体选择器
+  openEntityPicker,filterEntities,
+  // 背景图片选择器
+  confirmBgPick,bgSearch,renderBgBreadcrumb,loadBgList,
+  // 图片选择器
+  _confirmImgPick,pickCalendarEntity,
+  // 导入/导出
+  openYaml,exportJSON,importJSON,downloadPNG,generateOnHA,generateAndSend,
+  // 模板管理
+  loadTemplateList,loadTplToEditor,saveCurrentAsTemplate,deleteTpl,
+  yamlSaveAsTemplate,confirmSaveTemplate,
+  yamlPreviewGenerate,yamlGenerateAndSend,yamlTestTemplate,runTemplateTest,
+});
 </script>
 </body>
 </html>
