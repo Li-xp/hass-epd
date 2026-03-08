@@ -1,0 +1,12 @@
+{
+  "domain": "epd_display",
+  "name": "EPD E-Paper Display",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/your-repo/epd_display",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/your-repo/epd_display/issues",
+  "requirements": ["Pillow>=9.0.0"],
+  "version": "1.2.0"
+}

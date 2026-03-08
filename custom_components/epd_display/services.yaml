@@ -1,0 +1,189 @@
+connect:
+  name: Connect
+  description: Connect to BLE e-paper device
+  fields:
+    device_name:
+      name: Device Name
+      description: BLE device name
+      required: false
+      selector:
+        text: null
+disconnect:
+  name: Disconnect
+  description: Disconnect from BLE device
+clear:
+  name: Clear Screen
+  description: Clear the display
+refresh:
+  name: Refresh
+  description: Refresh the display
+sleep:
+  name: Sleep
+  description: Put device to sleep
+display_image:
+  name: Display Image
+  description: Upload and display a local image
+  fields:
+    image_path:
+      name: Image Path
+      required: true
+      selector:
+        text: null
+    canvas:
+      name: Canvas Size
+      required: false
+      selector:
+        select:
+          options:
+          - '7.5_800_480'
+          - '4.2_400_300'
+          - '2.9_296_128'
+    dither_mode:
+      name: Color Mode
+      required: false
+      selector:
+        select:
+          options:
+          - blackWhiteColor
+          - threeColor
+          - fourColor
+          - sixColor
+    contrast:
+      name: Contrast
+      required: false
+      default: 1.0
+      selector:
+        number:
+          min: 0.1
+          max: 3.0
+          step: 0.1
+display_url:
+  name: Display URL
+  description: Display image from URL
+  fields:
+    image_url:
+      name: Image URL
+      required: true
+      selector:
+        text: null
+    canvas:
+      name: Canvas Size
+      required: false
+      selector:
+        select:
+          options:
+          - '7.5_800_480'
+          - '4.2_400_300'
+          - '2.9_296_128'
+    dither_mode:
+      name: Color Mode
+      required: false
+      selector:
+        select:
+          options:
+          - blackWhiteColor
+          - threeColor
+          - fourColor
+          - sixColor
+    contrast:
+      name: Contrast
+      required: false
+      default: 1.0
+      selector:
+        number:
+          min: 0.1
+          max: 3.0
+          step: 0.1
+generate_image:
+  name: Generate Image
+  description: >
+    Compose an image with drawing primitives (rectangle, line, point, text,
+    entity_text, computed_text) and save to <config>/epd_images/.
+  fields:
+    width:
+      name: Width (px)
+      required: true
+      default: 800
+      selector:
+        number:
+          min: 1
+          max: 4096
+          step: 1
+          mode: box
+    height:
+      name: Height (px)
+      required: true
+      default: 480
+      selector:
+        number:
+          min: 1
+          max: 4096
+          step: 1
+          mode: box
+    background_color:
+      name: Background Color
+      required: false
+      default: "white"
+      selector:
+        text: null
+    background_image:
+      name: Background Image Path
+      required: false
+      selector:
+        text: null
+    elements:
+      name: Drawing Elements
+      description: >
+        YAML list of primitives. Types: rectangle, line, point, text,
+        entity_text, computed_text. computed_text uses Jinja2 templates.
+      required: false
+      selector:
+        object: null
+    output_filename:
+      name: Output Filename
+      required: false
+      default: "epd_editor_output.png"
+      selector:
+        text: null
+render_template:
+  name: Render Template
+  description: >
+    Load a saved template by name, resolve all entity/computed values with
+    current HA state, generate the image, and optionally send to the EPD.
+    Ideal for HA automations that periodically refresh the e-paper display.
+  fields:
+    template_name:
+      name: Template Name
+      description: Name of the saved template (without .json extension)
+      required: true
+      selector:
+        text: null
+    send_after_render:
+      name: Send After Render
+      description: Automatically send the generated image to the EPD device
+      required: false
+      default: false
+      selector:
+        boolean: null
+sync_time:
+  name: Sync Time / Clock
+  description: >
+    Sync device time and activate the built-in e-paper clock or calendar.
+    mode=1: full-refresh calendar (shows full date + time, flickers once).
+    mode=2: partial-refresh clock (no flicker, updates every minute).
+  fields:
+    mode:
+      name: Clock Mode
+      description: "1 = full-refresh calendar, 2 = partial-refresh clock"
+      required: false
+      default: 2
+      selector:
+        select:
+          options:
+            - label: "日历 (全刷, 含日期)"
+              value: "1"
+            - label: "时钟 (局刷, 无闪烁)"
+              value: "2"
+sys_reset:
+  name: System Reset
+  description: Send a system reset command to the e-paper device.

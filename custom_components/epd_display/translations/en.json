@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EPD E-Paper Display",
+        "data": {
+          "host": "Server Host",
+          "port": "Port",
+          "device_name": "BLE Device Name",
+          "canvas": "Canvas Size",
+          "driver": "Driver Code",
+          "dither_mode": "Color Mode"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Already configured"
+    },
+    "error": {
+      "cannot_connect": "Cannot connect",
+      "unknown": "Unknown error"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EPD Options",
+        "data": {
+          "canvas": "Canvas Size",
+          "driver": "Driver Code",
+          "dither_mode": "Color Mode",
+          "contrast": "Contrast",
+          "dither_strength": "Dither Strength"
+        }
+      }
+    }
+  }
+}

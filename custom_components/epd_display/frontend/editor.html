@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EPD 图片编辑器</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c1117;--sf:#151d28;--sf2:#1b2838;--sf3:#243447;--ac:#22d3a7;--ac2:#17a382;--warn:#f97066;--info:#5eaadb;--yellow:#f0c050;--text:#e4e8ec;--text2:#8899aa;--text3:#556677;--bd:#1e2d3d;--r:6px;--font:"IBM Plex Sans","Noto Sans SC",system-ui,sans-serif;--mono:"IBM Plex Mono",monospace}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden}button{font-family:var(--font)}
+
+header{background:var(--sf);border-bottom:1px solid var(--bd);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+header .logo{width:22px;height:22px;background:var(--ac);border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;color:var(--bg)}
+header h1{font-size:14px;font-weight:600}
+.tabs{display:flex;gap:1px;margin-left:20px;background:var(--bg);border-radius:var(--r);padding:2px}
+.tab{padding:5px 14px;border:none;background:none;color:var(--text2);font-size:11px;font-weight:500;border-radius:4px;cursor:pointer;transition:.15s}
+.tab:hover{color:var(--text)}.tab.active{background:var(--ac);color:var(--bg)}
+
+.page{display:none;flex:1;overflow:hidden}.page.active{display:flex}
+
+/* ── shared form ─── */
+.row{display:flex;gap:5px;margin-bottom:5px;align-items:center}
+.row label{font-size:10px;color:var(--text2);width:42px;flex-shrink:0;text-align:right}
+.row input[type=number],.row input[type=text]{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px;outline:none}
+.row input[type=color]{width:28px;height:24px;padding:1px;border:1px solid var(--bd);border-radius:var(--r);cursor:pointer;background:var(--bg);flex-shrink:0}
+.row select{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px;outline:none}
+.row input:focus,.row select:focus{border-color:var(--ac)}
+
+.btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:none;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;transition:.12s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-a{background:var(--ac);color:var(--bg)}.btn-a:hover{background:#2aeabc}
+.btn-s{background:var(--sf2);color:var(--text)}.btn-s:hover{background:var(--sf3)}
+.btn-d{background:#2a1518;color:#f88}.btn-d:hover{background:#3a1e22}
+.btn-w{background:var(--warn);color:#fff}.btn-w:hover{opacity:.85}
+.btn-y{background:var(--yellow);color:var(--bg)}.btn-y:hover{opacity:.85}
+.btn-sm{padding:3px 7px;font-size:10px}
+.btn-group{display:flex;gap:4px;flex-wrap:wrap}
+
+/* ── Send page ──── */
+.send-page{flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:30px;overflow-y:auto}
+.send-card{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:24px;width:100%;max-width:520px}
+.send-card h2{font-size:12px;color:var(--ac);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.send-card .field{margin-bottom:10px}
+.send-card label{display:block;font-size:11px;color:var(--text2);margin-bottom:3px}
+.send-card input,.send-card select{width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:7px 9px;border-radius:var(--r);font-size:12px;outline:none}
+.drop-zone{border:2px dashed var(--bd);border-radius:var(--r);padding:30px 16px;text-align:center;color:var(--text2);font-size:12px;cursor:pointer;transition:.2s;position:relative}
+.drop-zone:hover,.drop-zone.over{border-color:var(--ac);color:var(--ac)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop-zone .preview{max-width:100%;max-height:180px;border-radius:3px;margin-top:8px}
+
+/* ── Editor layout ── */
+.editor-layout{display:flex;height:100%}
+.sidebar{width:280px;min-width:280px;background:var(--sf);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar section{padding:12px 14px;border-bottom:1px solid var(--bd)}
+.sidebar section h3{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--ac);margin-bottom:8px}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.tools .btn{justify-content:center;font-size:10px;padding:6px 3px}
+.tools .btn.on{background:var(--ac);color:var(--bg)}
+.el-list{max-height:200px;overflow-y:auto}
+.el-item{display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--bg);border-radius:var(--r);margin-bottom:2px;font-size:10px;cursor:pointer;border:1px solid transparent;transition:.1s}
+.el-item:hover{border-color:var(--sf3)}.el-item.sel{border-color:var(--ac);background:rgba(34,211,167,.05)}
+.el-item .badge{font-size:8px;padding:1px 4px;border-radius:2px;color:#fff;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
+.el-item .badge.rect{background:#2d6a4f}.el-item .badge.line{background:#e76f51}.el-item .badge.point{background:#457b9d}.el-item .badge.text{background:#6d597a}.el-item .badge.entity{background:#d4a373}.el-item .badge.computed{background:#4895ef}.el-item .badge.calendar{background:#7b5ea7}
+.el-item .badge.image{background:#2b6cb0}
+.el-item .info{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.el-item .x-btn{background:none;border:none;color:#f66;cursor:pointer;font-size:13px;padding:0 2px;line-height:1}
+#props-sec{display:none}
+
+.canvas-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;background:var(--bg);overflow:auto}
+.canvas-wrap{position:relative;box-shadow:0 4px 28px rgba(0,0,0,.45);background:#fff;border-radius:2px;overflow:hidden}
+#editor-canvas{display:block;cursor:crosshair}
+.canvas-info{margin-top:6px;font-size:10px;color:var(--text3)}
+
+/* ── Template page ── */
+.tpl-page{flex-direction:column;padding:20px;gap:16px;overflow-y:auto}
+.tpl-page .tpl-row{display:flex;gap:16px;flex:1;min-height:0}
+.tpl-panel{background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:18px;flex:1;display:flex;flex-direction:column}
+.tpl-panel h2{font-size:12px;color:var(--ac);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.tpl-list{flex:1;overflow-y:auto}
+.tpl-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--r);cursor:pointer;font-size:12px;transition:.1s;border:1px solid transparent}
+.tpl-item:hover{background:var(--sf2)}.tpl-item.sel{border-color:var(--ac);background:rgba(34,211,167,.06)}
+.tpl-item .name{flex:1;font-weight:500}.tpl-item .del{background:none;border:none;color:var(--warn);cursor:pointer;font-size:14px}
+
+/* ── YAML code editor ── */
+.code-area{flex:1;display:flex;flex-direction:column}
+.code-area textarea{flex:1;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:12px;border:1px solid var(--bd);border-radius:var(--r);padding:10px;resize:none;outline:none;line-height:1.5;tab-size:2}
+.code-area textarea:focus{border-color:var(--ac)}
+.code-preview{margin-top:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);font-family:var(--mono);font-size:11px;color:var(--yellow);min-height:28px;max-height:80px;overflow-y:auto;white-space:pre-wrap}
+
+/* ── Bottom bar ──── */
+.bottom{background:var(--sf);border-top:1px solid var(--bd);padding:7px 18px;display:flex;align-items:center;gap:8px;justify-content:space-between;flex-shrink:0;flex-wrap:wrap}
+.bottom .coords{font-size:10px;color:var(--text3);font-family:var(--mono)}
+
+/* modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--sf);border-radius:10px;padding:20px;width:90%;max-width:660px;max-height:80vh;overflow-y:auto}
+.modal h2{font-size:13px;margin-bottom:8px;color:var(--ac)}
+.modal textarea{width:100%;min-height:220px;background:var(--bg);color:#7f7;font-family:var(--mono);border:1px solid var(--bd);border-radius:var(--r);padding:8px;font-size:11px;resize:vertical}
+.entity-search{width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:7px 9px;border-radius:var(--r);font-size:12px;outline:none;margin-bottom:6px}
+.entity-list{max-height:48vh;overflow-y:auto}
+.entity-row{display:flex;align-items:center;gap:6px;padding:5px 7px;border-radius:var(--r);cursor:pointer;font-size:11px;transition:.1s}
+.entity-row:hover{background:var(--sf2)}
+.entity-row .eid{color:var(--info);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.entity-row .estate{color:var(--ac);width:70px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.entity-row .ename{color:var(--text2);width:140px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--ac);color:var(--bg);padding:8px 20px;border-radius:var(--r);font-size:12px;font-weight:500;z-index:300;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1}
+.hidden-input{display:none}
+
+/* ── HA image picker ── */
+.bg-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:52vh;overflow-y:auto;padding:4px 0}
+.bg-thumb{border:2px solid var(--bd);border-radius:var(--r);cursor:pointer;overflow:hidden;position:relative;transition:.12s;background:var(--sf2)}
+.bg-thumb:hover{border-color:var(--ac)}
+.bg-thumb.sel{border-color:var(--ac);box-shadow:0 0 0 2px rgba(34,211,167,.35)}
+.bg-thumb img{width:100%;height:70px;object-fit:cover;display:block}
+.bg-thumb .label{font-size:9px;color:var(--text2);padding:3px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bg-dir-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.bg-breadcrumb{font-size:10px;color:var(--text2);margin-bottom:6px}
+.bg-breadcrumb a{color:var(--ac);cursor:pointer;text-decoration:none}
+.bg-breadcrumb a:hover{text-decoration:underline}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">E</div>
+  <h1>EPD 墨水屏控制台</h1>
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('send')">发送图片</button>
+    <button class="tab" onclick="showPage('editor')">画面编辑</button>
+    <button class="tab" onclick="showPage('tpl')">模板管理</button>
+  </div>
+</header>
+
+<!-- ═══════ PAGE: SEND ═══════ -->
+<div class="page active" id="page-send">
+<div class="send-page">
+  <div class="send-card">
+    <h2>📤 上传本地图片</h2>
+    <div class="drop-zone" id="drop-zone">
+      <div>拖放图片或点击选择</div>
+      <input type="file" accept="image/*" id="upload-file">
+      <img class="preview" id="upload-preview" style="display:none">
+    </div>
+    <div class="field" style="margin-top:10px"><label>Canvas</label><select id="send-canvas"></select></div>
+    <div class="field"><label>Color Mode</label><select id="send-dither"></select></div>
+    <button class="btn btn-a" style="margin-top:6px" onclick="sendUpload()">🚀 发送到墨水屏</button>
+  </div>
+  <div class="send-card">
+    <h2>🔗 URL 发送</h2>
+    <div class="field"><label>图片 URL</label><input type="url" id="send-url" placeholder="https://..."></div>
+    <div class="field"><label>Canvas</label><select id="send-url-canvas"></select></div>
+    <div class="field"><label>Color Mode</label><select id="send-url-dither"></select></div>
+    <button class="btn btn-a" style="margin-top:6px" onclick="sendUrl()">🚀 发送到墨水屏</button>
+  </div>
+</div>
+</div>
+
+<!-- ═══════ PAGE: EDITOR ═══════ -->
+<div class="page" id="page-editor">
+<div class="editor-layout">
+  <aside class="sidebar">
+    <section>
+      <h3>画布</h3>
+      <div class="row"><label>宽</label><input type="number" id="cw" value="800" min="1" max="4096"><label>高</label><input type="number" id="ch" value="480" min="1" max="4096"></div>
+      <div class="row"><label>底色</label><input type="color" id="bg-color" value="#ffffff"><label>背景</label><input type="file" id="bg-file" accept="image/*" class="hidden-input"><button class="btn btn-s btn-sm" onclick="$('bg-file').click()">本地</button><button class="btn btn-s btn-sm" onclick="openBgPicker()">HA</button><button class="btn btn-d btn-sm" onclick="clearBg()">×</button></div>
+      <div id="bg-path-row" style="display:none;font-size:9px;color:var(--text3);padding:2px 0 0 46px;word-break:break-all" id="bg-path-label"></div>
+      <div class="row"><label>预设</label><select id="preset"><option value="">自定义</option><option value="800,480" selected>7.5寸 800×480</option><option value="400,300">4.2寸 400×300</option><option value="296,128">2.9寸 296×128</option><option value="960,640">10.2寸 960×640</option><option value="648,480">5.83寸 648×480</option><option value="880,528">7.5寸 880×528</option></select></div>
+      <button class="btn btn-s btn-sm" onclick="applyCanvas()" style="margin-top:3px">应用</button>
+    </section>
+    <section>
+      <h3>工具</h3>
+      <div class="tools">
+        <button class="btn btn-s" data-tool="select" onclick="setTool('select')">↖ 选择</button>
+        <button class="btn btn-s" data-tool="rectangle" onclick="setTool('rectangle')">▭ 矩形</button>
+        <button class="btn btn-s" data-tool="line" onclick="setTool('line')">╱ 线段</button>
+        <button class="btn btn-s" data-tool="point" onclick="setTool('point')">● 点</button>
+        <button class="btn btn-s" data-tool="text" onclick="setTool('text')">T 文字</button>
+        <button class="btn btn-s" data-tool="computed" onclick="setTool('computed')">{} 代码</button>
+        <button class="btn btn-s" data-tool="image" onclick="setTool('image')">🖼 图标</button>
+        <button class="btn btn-s" data-tool="calendar" onclick="setTool('calendar')">📅 日历</button>
+        <button class="btn btn-s" style="grid-column:span 3" onclick="addEntityText()">📊 添加传感器实体</button>
+      </div>
+      <div class="row" style="margin-top:6px"><label>颜色</label><input type="color" id="draw-color" value="#000000"><label>线宽</label><input type="number" id="draw-lw" value="2" min="1" max="50" style="width:44px"></div>
+      <div class="row" id="fill-row" style="display:none"><label>填充</label><input type="color" id="fill-color" value="#ffffff"><label style="width:auto"><input type="checkbox" id="fill-on"> 填充</label></div>
+      <div id="text-opts" style="display:none"><div class="row"><label>字号</label><input type="number" id="font-size" value="24" min="6" max="200"></div><div class="row"><label>内容</label><input type="text" id="text-input" placeholder="文字"></div></div>
+      <div id="point-opts" style="display:none"><div class="row"><label>半径</label><input type="number" id="point-r" value="4" min="1" max="100"></div></div>
+      <div id="computed-opts" style="display:none">
+        <div class="row"><label>字号</label><input type="number" id="comp-fs" value="20" min="6" max="200"></div>
+        <div class="row"><label>图标宽</label><input type="number" id="comp-iw" placeholder="不填=文字" min="4" max="2048" style="flex:1"><label>高</label><input type="number" id="comp-ih" placeholder="不填=文字" min="4" max="2048" style="flex:1"></div>
+        <div style="font-size:10px;color:var(--text2);margin:4px 0">Jinja2 模板：输出<b>文字</b>或<b>图片路径</b>:</div>
+        <textarea id="comp-tpl" style="width:100%;height:60px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:6px;resize:vertical;outline:none" placeholder="文字: {{ states('sensor.temp') }}°C
+图标: /config/www/icons/{{ states('sun.sun') }}.png"></textarea>
+      </div>
+      <div id="calendar-opts" style="display:none">
+        <div class="row"><label>宽</label><input type="number" id="cal-w" value="380" min="100"><label>高</label><input type="number" id="cal-h" value="280" min="80"></div>
+        <div class="row"><label>语言</label>
+          <select id="cal-lang" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px">
+            <option value="zh">中文</option><option value="en">English</option>
+          </select>
+        </div>
+        <div class="row"><label>周首日</label>
+          <select id="cal-fwd" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px">
+            <option value="0">周一</option><option value="6">周日</option>
+          </select>
+        </div>
+        <div class="row"><label>年/月</label><input type="number" id="cal-year" placeholder="当前年" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><input type="number" id="cal-month" placeholder="当前月" min="1" max="12" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"></div>
+        <div style="font-size:10px;color:var(--text2);margin:4px 0">日历实体（逗号分隔）:</div>
+        <input type="text" id="cal-entities" placeholder="calendar.home, calendar.work" style="width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px;outline:none;margin-bottom:4px">
+        <div class="btn-group">
+          <button class="btn btn-s btn-sm" onclick="pickCalendarEntity()">🔍 选择实体</button>
+        </div>
+        <div style="font-size:10px;color:var(--text2);margin-top:6px">点击画布放置日历</div>
+      </div>
+      <div id="image-opts" style="display:none">
+        <div class="row"><label>宽</label><input type="number" id="img-w" value="64" min="4" max="2048"><label>高</label><input type="number" id="img-h" value="64" min="4" max="2048"></div>
+        <div class="row"><label>透明度</label><input type="number" id="img-opacity" value="1" min="0.05" max="1" step="0.05" style="flex:1"></div>
+        <div class="row"><label>保持比</label><label style="width:auto"><input type="checkbox" id="img-aspect" checked> 开启</label></div>
+        <div style="font-size:10px;color:var(--text2);margin:5px 0 3px">图片来源:</div>
+        <div class="btn-group" style="margin-top:3px">
+          <button class="btn btn-s btn-sm" onclick="$('img-local-file').click()">📁 本地文件</button>
+          <button class="btn btn-s btn-sm" onclick="openImgPickerForTool()">📂 从HA选择</button>
+        </div>
+        <input type="file" id="img-local-file" accept="image/*,.svg" class="hidden-input">
+        <div style="font-size:10px;color:var(--text2);margin:5px 0 2px">或手动填写服务器路径:</div>
+        <div style="display:flex;gap:4px">
+          <input type="text" id="img-path" placeholder="/config/www/epd_icons/icon.svg"
+            style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:10px;outline:none">
+        </div>
+        <div id="img-tool-thumb" style="margin-top:6px;display:none">
+          <img id="img-tool-preview" style="max-width:100%;max-height:80px;border-radius:3px;border:1px solid var(--bd)">
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">点击画布放置图标</div>
+      </div>
+    </section>
+    <section style="flex:1">
+      <h3>图层 <span id="el-count" style="color:var(--text3);font-size:9px;text-transform:none;letter-spacing:0"></span></h3>
+      <div class="el-list" id="el-list"></div>
+      <div class="btn-group" style="margin-top:4px"><button class="btn btn-d btn-sm" onclick="clearAll()">清空</button></div>
+    </section>
+    <section id="props-sec">
+      <h3>属性</h3>
+      <div id="props-panel"></div>
+      <div class="btn-group" style="margin-top:4px">
+        <button class="btn btn-a btn-sm" onclick="applyProps()">应用</button>
+        <button class="btn btn-d btn-sm" onclick="delSelected()">删除</button>
+      </div>
+    </section>
+  </aside>
+  <main class="canvas-area"><div class="canvas-wrap"><canvas id="editor-canvas" width="800" height="480"></canvas></div><div class="canvas-info" id="canvas-info">800 × 480</div></main>
+</div>
+</div>
+
+<!-- ═══════ PAGE: TEMPLATE MANAGEMENT ═══════ -->
+<div class="page" id="page-tpl">
+<div class="tpl-page">
+  <div class="btn-group">
+    <button class="btn btn-a" onclick="saveCurrentAsTemplate()">💾 保存当前编辑为模板</button>
+    <button class="btn btn-s" onclick="loadTemplateList()">🔄 刷新列表</button>
+  </div>
+  <div class="tpl-row">
+    <!-- left: template list -->
+    <div class="tpl-panel" style="max-width:320px">
+      <h2>已保存模板</h2>
+      <div class="tpl-list" id="tpl-list"></div>
+    </div>
+    <!-- right: YAML code editor -->
+    <div class="tpl-panel">
+      <h2>YAML 代码编辑器</h2>
+      <p style="font-size:10px;color:var(--text2);margin-bottom:6px">
+        直接编写 YAML，支持 computed_text 使用 Jinja2 模板。可预览模板计算结果。
+      </p>
+      <div class="code-area">
+        <textarea id="yaml-editor" placeholder="# 在此编写模板 YAML，例如:
+width: 800
+height: 480
+background_color: white
+elements:
+  - type: text
+    x: 20
+    y: 10
+    text: 家庭状态
+    color: black
+    font_size: 32
+  - type: computed_text
+    x: 20
+    y: 60
+    font_size: 24
+    color: '#333333'
+    template: >-
+      窗户: {{ states.binary_sensor
+        | selectattr('state','eq','on')
+        | selectattr('attributes.device_class','eq','window')
+        | list | count }} 扇已开
+  - type: entity_text
+    x: 20
+    y: 100
+    entity_id: sensor.temperature
+    prefix: '室温: '
+    suffix: '°C'
+    font_size: 24
+    color: black"></textarea>
+      </div>
+      <div class="btn-group" style="margin-top:8px">
+        <button class="btn btn-a" onclick="yamlPreviewGenerate()">▶ 预览生成</button>
+        <button class="btn btn-y" onclick="yamlSaveAsTemplate()">💾 保存为模板</button>
+        <button class="btn btn-s" onclick="yamlTestTemplate()">🔍 测试模板表达式</button>
+        <button class="btn btn-w" onclick="yamlGenerateAndSend()">🚀 生成并发送</button>
+      </div>
+      <div class="code-preview" id="yaml-preview" style="margin-top:8px">预览结果将显示在此</div>
+      <div style="margin-top:12px;padding:12px;background:var(--bg);border:1px solid var(--bd);border-radius:var(--r)">
+        <h3 style="font-size:11px;color:var(--yellow);margin-bottom:6px">💡 自动化示例</h3>
+        <pre style="font-size:10px;color:var(--text2);white-space:pre-wrap;font-family:var(--mono);line-height:1.5">automation:
+  - alias: "每小时刷新墨水屏"
+    trigger:
+      - platform: time_pattern
+        minutes: "/60"
+    action:
+      - service: epd_display.render_template
+        data:
+          template_name: "my_dashboard"
+          send_after_render: true</pre>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ── Bottom bar ── -->
+<div class="bottom">
+  <span class="coords" id="coords">X: — Y: —</span>
+  <div class="btn-group">
+    <button class="btn btn-s" onclick="openYaml()">📋 导出YAML</button>
+    <button class="btn btn-s" onclick="exportJSON()">💾 JSON</button>
+    <button class="btn btn-s" onclick="importJSON()">📂 导入</button>
+    <button class="btn btn-s" onclick="downloadPNG()">⬇ PNG</button>
+    <button class="btn btn-a" onclick="generateOnHA()">🖨 生成到HA</button>
+    <button class="btn btn-w" onclick="generateAndSend()">🚀 生成发送</button>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="modal-bg" id="yaml-modal"><div class="modal"><h2>YAML 服务调用</h2><textarea id="yaml-out" readonly></textarea><div class="btn-group" style="margin-top:6px;justify-content:flex-end"><button class="btn btn-s" onclick="navigator.clipboard.writeText($('yaml-out').value);toast('已复制')">复制</button><button class="btn btn-s" onclick="closeModal('yaml-modal')">关闭</button></div></div></div>
+<div class="modal-bg" id="entity-modal"><div class="modal"><h2>选择实体</h2><input class="entity-search" id="entity-search" placeholder="搜索..." oninput="filterEntities()"><div class="entity-list" id="entity-list-container"></div><div class="btn-group" style="margin-top:6px;justify-content:flex-end"><button class="btn btn-s" onclick="closeModal('entity-modal')">取消</button></div></div></div>
+<div class="modal-bg" id="tpl-name-modal"><div class="modal"><h2>模板名称</h2><div class="row"><label>名称</label><input type="text" id="tpl-name-input" placeholder="my_dashboard" style="flex:1"></div><div class="btn-group" style="margin-top:8px;justify-content:flex-end"><button class="btn btn-a" onclick="confirmSaveTemplate()">保存</button><button class="btn btn-s" onclick="closeModal('tpl-name-modal')">取消</button></div></div></div>
+<div class="modal-bg" id="tpl-test-modal"><div class="modal"><h2>测试 Jinja2 模板</h2><p style="font-size:11px;color:var(--text2);margin-bottom:6px">输入模板表达式，实时测试渲染结果</p><textarea id="tpl-test-input" style="width:100%;height:100px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:12px;border:1px solid var(--bd);border-radius:var(--r);padding:8px;resize:vertical;outline:none" placeholder="{{ states('sensor.temperature') }}"></textarea><div class="btn-group" style="margin-top:6px"><button class="btn btn-a" onclick="runTemplateTest()">▶ 执行</button></div><div class="code-preview" id="tpl-test-result" style="margin-top:8px">结果</div><div class="btn-group" style="margin-top:8px;justify-content:flex-end"><button class="btn btn-s" onclick="closeModal('tpl-test-modal')">关闭</button></div></div></div>
+
+<input type="file" id="import-input" accept=".json" class="hidden-input">
+<div class="toast" id="toast-el"></div>
+
+<!-- ── HA Background Image Picker ── -->
+<div class="modal-bg" id="bg-picker-modal">
+  <div class="modal" style="max-width:720px;width:95%">
+    <h2>📂 从 HA 选择底图</h2>
+    <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+      <input class="entity-search" id="bg-search" placeholder="搜索文件名…" oninput="bgSearch()" style="flex:1;margin:0">
+      <button class="btn btn-s btn-sm" onclick="loadBgList()">🔄</button>
+    </div>
+    <div class="bg-breadcrumb" id="bg-breadcrumb"></div>
+    <div class="bg-dir-row" id="bg-dir-row"></div>
+    <div class="bg-picker-grid" id="bg-picker-grid">
+      <div style="color:var(--text3);font-size:12px;padding:20px 0">加载中…</div>
+    </div>
+    <div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:var(--r);font-size:10px;color:var(--text3)">
+      扫描目录：<code>config/www/</code>（作为 /local/ 访问）和 <code>config/epd_images/</code>（本集成生成图）
+    </div>
+    <div class="btn-group" style="margin-top:10px;justify-content:flex-end">
+      <button class="btn btn-a" id="bg-confirm-btn" onclick="confirmBgPick()" disabled>✅ 使用选中图片</button>
+      <button class="btn btn-s" onclick="closeModal('bg-picker-modal')">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════ Helpers ══════
+function toast(m){const t=$('toast-el');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function $(id){return document.getElementById(id)}
+function closeModal(id){$(id).classList.remove('open')}
+function getToken(){try{const a=JSON.parse(localStorage.getItem('hassTokens'));if(a&&a.access_token)return a.access_token}catch(e){}const p=new URLSearchParams(location.search);return p.get('token')||null}
+function authH(){const t=getToken(),h={'Content-Type':'application/json'};if(t)h['Authorization']='Bearer '+t;return h}
+function authHM(){const t=getToken(),h={};if(t)h['Authorization']='Bearer '+t;return h}
+
+// ══════ Pages ══════
+function showPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('page-'+n).classList.add('active');document.querySelectorAll('.tab').forEach(t=>{if((n==='send'&&t.textContent.includes('发送'))||(n==='editor'&&t.textContent.includes('编辑'))||(n==='tpl'&&t.textContent.includes('模板')))t.classList.add('active')});if(n==='tpl')loadTemplateList()}
+
+// ══════ Config ══════
+let haConfig={canvas_options:[],dither_modes:[],defaults:{}};
+async function loadConfig(){try{const r=await fetch('/api/epd_display/config',{headers:authH()});if(r.ok)haConfig=await r.json()}catch(e){}['send-canvas','send-url-canvas'].forEach(id=>{const s=$(id);s.innerHTML='';haConfig.canvas_options.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===haConfig.defaults.canvas)o.selected=true;s.appendChild(o)})});['send-dither','send-url-dither'].forEach(id=>{const s=$(id);s.innerHTML='';haConfig.dither_modes.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===haConfig.defaults.dither_mode)o.selected=true;s.appendChild(o)})})}
+loadConfig();
+
+// ══════ Send Page ══════
+let uploadFileData=null;
+$('upload-file').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;uploadFileData=f;$('upload-preview').src=URL.createObjectURL(f);$('upload-preview').style.display='block';$('drop-zone').querySelector('div').textContent=f.name});
+$('drop-zone').addEventListener('dragover',e=>{e.preventDefault();$('drop-zone').classList.add('over')});
+$('drop-zone').addEventListener('dragleave',()=>$('drop-zone').classList.remove('over'));
+$('drop-zone').addEventListener('drop',e=>{e.preventDefault();$('drop-zone').classList.remove('over');const f=e.dataTransfer.files[0];if(!f)return;uploadFileData=f;$('upload-file').files=e.dataTransfer.files;$('upload-preview').src=URL.createObjectURL(f);$('upload-preview').style.display='block';$('drop-zone').querySelector('div').textContent=f.name});
+async function sendUpload(){if(!uploadFileData){toast('请选择图片');return}const fd=new FormData();fd.append('image',uploadFileData);fd.append('canvas',$('send-canvas').value);fd.append('dither_mode',$('send-dither').value);try{const r=await fetch('/api/epd_display/upload',{method:'POST',headers:authHM(),body:fd});if(r.ok)toast('✅ 发送成功');else{const j=await r.json();toast('❌ '+j.error)}}catch(e){toast('❌ '+e.message)}}
+async function sendUrl(){const u=$('send-url').value.trim();if(!u){toast('请输入URL');return}try{const r=await fetch('/api/epd_display/display_url',{method:'POST',headers:authH(),body:JSON.stringify({image_url:u,canvas:$('send-url-canvas').value,dither_mode:$('send-url-dither').value})});if(r.ok)toast('✅ 发送成功');else{const j=await r.json();toast('❌ '+j.error)}}catch(e){toast('❌ '+e.message)}}
+
+// ══════ Editor State ══════
+let cW=800,cH=480,bgColor='#ffffff',bgImg=null,bgImgPath='';
+let elements=[],selIdx=-1,curTool='select';
+let drawing=false,dragging=false,resizing=false;
+let startX=0,startY=0,dragOffX=0,dragOffY=0,resizeHandle='';
+const canvas=$('editor-canvas'),ctx=canvas.getContext('2d');
+
+function applyCanvas(){cW=parseInt($('cw').value)||800;cH=parseInt($('ch').value)||480;canvas.width=cW;canvas.height=cH;$('canvas-info').textContent=`${cW} × ${cH}`;redraw()}
+$('preset').addEventListener('change',function(){if(!this.value)return;const[w,h]=this.value.split(',').map(Number);$('cw').value=w;$('ch').value=h;applyCanvas()});
+$('bg-color').addEventListener('input',function(){bgColor=this.value;redraw()});
+$('bg-file').addEventListener('change',function(e){const f=e.target.files[0];if(!f)return;bgImgPath=f.name;const img=new Image();img.onload=()=>{bgImg=img;redraw()};img.src=URL.createObjectURL(f)});
+function clearBg(){bgImg=null;bgImgPath='';$('bg-file').value='';const row=$('bg-path-row');if(row)row.style.display='none';redraw()}
+
+function setTool(t){curTool=t;document.querySelectorAll('.tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));$('fill-row').style.display=t==='rectangle'?'flex':'none';$('text-opts').style.display=t==='text'?'block':'none';$('point-opts').style.display=t==='point'?'block':'none';$('computed-opts').style.display=t==='computed'?'block':'none';$('calendar-opts').style.display=t==='calendar'?'block':'none';$('image-opts').style.display=t==='image'?'block':'none';canvas.style.cursor=t==='select'?'default':'crosshair'}
+setTool('select');
+
+// ── Hit/bounds ──
+function getBounds(el){
+  if(el.type==='rectangle')return{x:el.x,y:el.y,w:el.width,h:el.height};
+  if(el.type==='line'){const p=el.points;return{x:Math.min(p[0],p[2]),y:Math.min(p[1],p[3]),w:Math.abs(p[2]-p[0])||4,h:Math.abs(p[3]-p[1])||4}}
+  if(el.type==='point')return{x:el.x-el.radius,y:el.y-el.radius,w:el.radius*2,h:el.radius*2};
+  if(el.type==='calendar')return{x:el.x,y:el.y,w:el.width||380,h:el.height||280};
+  if(el.type==='image'){const iw=el.width||64,ih=el.height||64;return{x:el.x,y:el.y,w:iw,h:ih};}
+  if(el.type==='computed_text'&&el.width&&el.height)return{x:el.x,y:el.y,w:el.width,h:el.height};
+  ctx.save();ctx.font=`${el.font_size||20}px sans-serif`;
+  let t=el.text||'';
+  if(el.type==='entity_text')t=(el.prefix||'')+(el._state||'{'+el.entity_id+'}')+(el.suffix||'');
+  if(el.type==='computed_text')t=el._rendered||el.template||'{}';
+  const m=ctx.measureText(t);ctx.restore();
+  return{x:el.x,y:el.y,w:m.width||60,h:(el.font_size||20)*1.2};
+}
+function hitTest(mx,my){for(let i=elements.length-1;i>=0;i--){const b=getBounds(elements[i]);if(mx>=b.x-5&&mx<=b.x+b.w+5&&my>=b.y-5&&my<=b.y+b.h+5)return i}return-1}
+function getResizeHandle(el,mx,my){const b=getBounds(el),hs=6;for(const c of[{n:'nw',cx:b.x,cy:b.y},{n:'ne',cx:b.x+b.w,cy:b.y},{n:'sw',cx:b.x,cy:b.y+b.h},{n:'se',cx:b.x+b.w,cy:b.y+b.h}])if(Math.abs(mx-c.cx)<=hs&&Math.abs(my-c.cy)<=hs)return c.n;return''}
+function canvasPos(e){const r=canvas.getBoundingClientRect();return{x:Math.round((e.clientX-r.left)*cW/r.width),y:Math.round((e.clientY-r.top)*cH/r.height)}}
+
+// ── Mouse ──
+canvas.addEventListener('mousedown',e=>{const p=canvasPos(e);startX=p.x;startY=p.y;
+  if(curTool==='select'){if(selIdx>=0){const h=getResizeHandle(elements[selIdx],p.x,p.y);if(h){resizing=true;resizeHandle=h;return}}const hit=hitTest(p.x,p.y);if(hit>=0){selIdx=hit;dragging=true;const b=getBounds(elements[hit]);dragOffX=p.x-b.x;dragOffY=p.y-b.y;refreshList();showProps(selIdx);redraw()}else{selIdx=-1;refreshList();hideProps();redraw()}return}
+  if(curTool==='point'){elements.push({type:'point',x:p.x,y:p.y,radius:parseInt($('point-r').value)||4,color:$('draw-color').value});selIdx=elements.length-1;refreshList();redraw();return}
+  if(curTool==='text'){elements.push({type:'text',x:p.x,y:p.y,text:$('text-input').value||'Text',color:$('draw-color').value,font_size:parseInt($('font-size').value)||24,font_path:''});selIdx=elements.length-1;refreshList();redraw();return}
+  if(curTool==='computed'){const tpl=$('comp-tpl').value||'{{ now() }}';
+    const iw=parseInt($('comp-iw').value)||null,ih=parseInt($('comp-ih').value)||null;
+    const el={type:'computed_text',x:p.x,y:p.y,template:tpl,color:$('draw-color').value,font_size:parseInt($('comp-fs').value)||20,font_path:'',_rendered:'{...}'};
+    if(iw)el.width=iw;if(ih)el.height=ih;
+    elements.push(el);selIdx=elements.length-1;refreshList();redraw();return}
+  if(curTool==='calendar'){
+    const entsRaw=$('cal-entities').value.trim();
+    const ents=entsRaw?entsRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
+    const yr=parseInt($('cal-year').value)||null;
+    const mo=parseInt($('cal-month').value)||null;
+    elements.push({type:'calendar',x:p.x,y:p.y,width:parseInt($('cal-w').value)||380,height:parseInt($('cal-h').value)||280,lang:$('cal-lang').value,first_weekday:parseInt($('cal-fwd').value)||0,year:yr,month:mo,calendar_entities:ents,show_event_text:true,max_events_per_cell:2,_preview_events:[]});
+    selIdx=elements.length-1;refreshList();redraw();return}
+  if(curTool==='image'){
+    const path=$('img-path').value.trim();
+    const iw=parseInt($('img-w').value)||64, ih=parseInt($('img-h').value)||64;
+    const el={type:'image',x:p.x,y:p.y,
+      path: _imgToolSvgContent ? '' : path,
+      svg_content: _imgToolSvgContent || '',
+      width:iw, height:ih,
+      opacity:parseFloat($('img-opacity').value)||1,
+      keep_aspect:$('img-aspect').checked,
+      _img_obj:null};
+    // 画布预览
+    if(_imgToolSvgContent){
+      const blob=new Blob([_imgToolSvgContent],{type:'image/svg+xml'});
+      const url=URL.createObjectURL(blob);
+      const im=new Image();im.crossOrigin='anonymous';
+      im.onload=()=>{el._img_obj=im;redraw()};im.src=url;
+    } else if(path){
+      const previewUrl=imgPathToPreviewUrl(path);
+      if(previewUrl){const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{el._img_obj=im;redraw()};im.src=previewUrl;}
+    }
+    elements.push(el);selIdx=elements.length-1;refreshList();redraw();return}
+  drawing=true});
+
+canvas.addEventListener('mousemove',e=>{const p=canvasPos(e);$('coords').textContent=`X: ${p.x}  Y: ${p.y}`;
+  if(curTool==='select'&&selIdx>=0&&!dragging&&!resizing){const h=getResizeHandle(elements[selIdx],p.x,p.y);canvas.style.cursor=h?({nw:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',se:'nwse-resize'}[h]):(hitTest(p.x,p.y)>=0?'move':'default')}
+  if(dragging&&selIdx>=0){const el=elements[selIdx],nx=p.x-dragOffX,ny=p.y-dragOffY;if(el.type==='rectangle'){el.x=nx;el.y=ny}else if(el.type==='line'){const dx=nx-Math.min(el.points[0],el.points[2]),dy=ny-Math.min(el.points[1],el.points[3]);el.points=[el.points[0]+dx,el.points[1]+dy,el.points[2]+dx,el.points[3]+dy]}else if(el.type==='point'){el.x=nx+el.radius;el.y=ny+el.radius}else{el.x=nx;el.y=ny}redraw();return}
+  if(resizing&&selIdx>=0){const el=elements[selIdx];if(el.type==='rectangle'){if(resizeHandle.includes('e'))el.width=Math.max(4,p.x-el.x);if(resizeHandle.includes('s'))el.height=Math.max(4,p.y-el.y);if(resizeHandle.includes('w')){const r=el.x+el.width;el.x=Math.min(p.x,r-4);el.width=r-el.x}if(resizeHandle.includes('n')){const b=el.y+el.height;el.y=Math.min(p.y,b-4);el.height=b-el.y}}else if(el.type==='line'){if(resizeHandle==='nw'||resizeHandle==='sw'){el.points[0]=p.x;el.points[1]=p.y}else{el.points[2]=p.x;el.points[3]=p.y}}else if(el.type==='point'){el.radius=Math.max(2,Math.round(Math.hypot(p.x-el.x,p.y-el.y)))}else{el.font_size=Math.max(6,Math.round(Math.abs(p.y-el.y)*1.2))}redraw();return}
+  if(!drawing)return;redraw();ctx.save();ctx.strokeStyle=$('draw-color').value;ctx.lineWidth=parseInt($('draw-lw').value)||2;ctx.setLineDash([4,4]);if(curTool==='rectangle')ctx.strokeRect(startX,startY,p.x-startX,p.y-startY);else if(curTool==='line'){ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(p.x,p.y);ctx.stroke()}ctx.restore()});
+
+canvas.addEventListener('mouseup',e=>{if(dragging){dragging=false;refreshList();showProps(selIdx);return}if(resizing){resizing=false;refreshList();showProps(selIdx);return}if(!drawing)return;drawing=false;const p=canvasPos(e),c=$('draw-color').value,lw=parseInt($('draw-lw').value)||2;
+  if(curTool==='rectangle'){const x=Math.min(startX,p.x),y=Math.min(startY,p.y),w=Math.abs(p.x-startX),h=Math.abs(p.y-startY);if(w<2&&h<2)return;elements.push({type:'rectangle',x,y,width:w,height:h,outline:c,fill:$('fill-on').checked?$('fill-color').value:'',line_width:lw})}
+  else if(curTool==='line'){if(Math.hypot(p.x-startX,p.y-startY)<2)return;elements.push({type:'line',points:[startX,startY,p.x,p.y],color:c,line_width:lw})}
+  selIdx=elements.length-1;refreshList();redraw()});
+
+// ── Redraw ──
+function redraw(){ctx.fillStyle=bgColor;ctx.fillRect(0,0,cW,cH);if(bgImg)ctx.drawImage(bgImg,0,0,cW,cH);
+  elements.forEach((el,i)=>{ctx.save();
+    if(el.type==='rectangle'){if(el.fill){ctx.fillStyle=el.fill;ctx.fillRect(el.x,el.y,el.width,el.height)}ctx.strokeStyle=el.outline||'#000';ctx.lineWidth=el.line_width||1;ctx.strokeRect(el.x,el.y,el.width,el.height)}
+    else if(el.type==='line'){ctx.strokeStyle=el.color||'#000';ctx.lineWidth=el.line_width||1;ctx.beginPath();ctx.moveTo(el.points[0],el.points[1]);for(let j=2;j<el.points.length;j+=2)ctx.lineTo(el.points[j],el.points[j+1]);ctx.stroke()}
+    else if(el.type==='point'){ctx.fillStyle=el.color||'#000';ctx.beginPath();ctx.arc(el.x,el.y,el.radius||3,0,Math.PI*2);ctx.fill()}
+    else if(el.type==='text'){ctx.fillStyle=el.color||'#000';ctx.font=`${el.font_size||20}px sans-serif`;ctx.textBaseline='top';ctx.fillText(el.text,el.x,el.y)}
+    else if(el.type==='entity_text'){ctx.fillStyle=el.color||'#000';ctx.font=`${el.font_size||20}px sans-serif`;ctx.textBaseline='top';ctx.fillText((el.prefix||'')+(el._state||'{'+el.entity_id+'}')+(el.suffix||''),el.x,el.y)}
+    else if(el.type==='computed_text'){
+      const rendered=el._rendered||'{'+el.template?.substring(0,20)+'}';
+      const isImgPath=/^\/.*\.(png|jpg|jpeg|bmp|gif|webp|svg)$/i.test(rendered.trim());
+      const isSvgContent=rendered.trim().startsWith('<svg')||rendered.trim().startsWith('<?xml');
+      const showAsImg=isImgPath||isSvgContent;
+      if(showAsImg&&el._img_obj){
+        ctx.globalAlpha=el.opacity??1;
+        ctx.drawImage(el._img_obj,el.x,el.y,el.width||el._img_obj.naturalWidth,el.height||el._img_obj.naturalHeight);
+        ctx.globalAlpha=1;
+      }else if(showAsImg){
+        // 占位框
+        const iw=el.width||48,ih=el.height||48;
+        ctx.strokeStyle='#4895ef';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+        ctx.strokeRect(el.x,el.y,iw,ih);ctx.setLineDash([]);
+        ctx.fillStyle='rgba(72,149,239,.1)';ctx.fillRect(el.x,el.y,iw,ih);
+        ctx.fillStyle='#4895ef';ctx.font=`${Math.min(iw,ih)*0.4}px sans-serif`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(isSvgContent?'SVG':'🖼',el.x+iw/2,el.y+ih/2);
+        ctx.textAlign='left';ctx.textBaseline='top';
+      }else{
+        ctx.fillStyle=el.color||'#4895ef';ctx.font=`${el.font_size||20}px sans-serif`;ctx.textBaseline='top';
+        ctx.fillText(rendered,el.x,el.y);
+      }
+    }
+    else if(el.type==='calendar'){_drawCalendarPreview(ctx,el)}
+    else if(el.type==='image'){
+      const iw=el.width||64,ih=el.height||64;
+      if(el._img_obj){
+        ctx.globalAlpha=el.opacity??1;
+        ctx.drawImage(el._img_obj,el.x,el.y,iw,ih);
+        ctx.globalAlpha=1;
+      }else{
+        // 占位框：虚线矩形 + 图片图标
+        ctx.strokeStyle='#2b6cb0';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+        ctx.strokeRect(el.x,el.y,iw,ih);ctx.setLineDash([]);
+        ctx.fillStyle='rgba(43,108,176,.12)';ctx.fillRect(el.x,el.y,iw,ih);
+        ctx.fillStyle='#5a9fd4';ctx.font=`${Math.min(iw,ih)*0.4}px sans-serif`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('🖼',el.x+iw/2,el.y+ih/2);
+        ctx.textAlign='left';ctx.textBaseline='top';
+        if(el.path){ctx.font='9px sans-serif';ctx.fillStyle='#5a9fd4';
+          const name=el.path.split('/').pop();
+          ctx.fillText(name.substring(0,12),el.x+2,el.y+ih-12);}
+      }
+    }
+    if(i===selIdx){const b=getBounds(el);ctx.strokeStyle='rgba(34,211,167,.85)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.strokeRect(b.x-3,b.y-3,b.w+6,b.h+6);ctx.setLineDash([]);ctx.fillStyle='#22d3a7';[[b.x,b.y],[b.x+b.w,b.y],[b.x,b.y+b.h],[b.x+b.w,b.y+b.h]].forEach(([hx,hy])=>ctx.fillRect(hx-4,hy-4,8,8))}
+    ctx.restore()})}
+
+// ── Element list ──
+function refreshList(){const list=$('el-list');$('el-count').textContent=`(${elements.length})`;list.innerHTML='';
+  elements.forEach((el,i)=>{const d=document.createElement('div');d.className='el-item'+(i===selIdx?' sel':'');
+    const bc=el.type==='entity_text'?'entity':el.type==='computed_text'?'computed':el.type==='rectangle'?'rect':el.type==='calendar'?'calendar':el.type==='image'?'image':el.type;
+    const label=el.type==='entity_text'?'实体':el.type==='computed_text'?'代码':el.type==='calendar'?'日历':el.type==='image'?'图标':el.type;
+    let info='';
+    if(el.type==='rectangle')info=`${el.x},${el.y} ${el.width}×${el.height}`;
+    else if(el.type==='line')info=`(${el.points[0]},${el.points[1]})→(${el.points[2]},${el.points[3]})`;
+    else if(el.type==='point')info=`(${el.x},${el.y}) r=${el.radius}`;
+    else if(el.type==='text')info=`"${el.text}" @${el.x},${el.y}`;
+    else if(el.type==='entity_text')info=`${el.entity_id}`;
+    else if(el.type==='computed_text')info=el.template?.substring(0,30)||'';
+    else if(el.type==='calendar'){const ym=(el.year||'??')+'/'+(el.month||'??');info=`${ym} ${el.width||380}×${el.height||280} ${(el.calendar_entities||[]).length}实体`;}
+    else if(el.type==='image'){const name=(el.path||'').split('/').pop()||'未设置';info=`${name} ${el.width||64}×${el.height||64}`;}
+    d.innerHTML=`<span class="badge ${bc}">${label}</span><span class="info">${info}</span><button class="x-btn" onclick="event.stopPropagation();delElem(${i})">×</button>`;
+    d.addEventListener('click',()=>{selIdx=i;refreshList();showProps(i);redraw()});list.appendChild(d)});
+  if(selIdx>=0&&selIdx<elements.length)showProps(selIdx);else hideProps()}
+
+// ── Props ──
+function showProps(idx){const el=elements[idx];if(!el){hideProps();return}$('props-sec').style.display='block';const p=$('props-panel');
+  const R=(l,id,v,t='text')=>`<div class="row"><label>${l}</label><input type="${t}" id="p-${id}" value="${v??''}" style="flex:1"></div>`;
+  let h='';
+  if(el.type==='rectangle'){h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('宽','w',el.width,'number')+R('高','h',el.height,'number')+R('边框','ol',el.outline||'#000','color')+R('填充','fl',el.fill||'#fff','color')+R('线宽','lw',el.line_width||1,'number')}
+  else if(el.type==='line'){h+=R('X1','x1',el.points[0],'number')+R('Y1','y1',el.points[1],'number')+R('X2','x2',el.points[2],'number')+R('Y2','y2',el.points[3],'number')+R('颜色','c',el.color||'#000','color')+R('线宽','lw',el.line_width||1,'number')}
+  else if(el.type==='point'){h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('半径','r',el.radius||3,'number')+R('颜色','c',el.color||'#000','color')}
+  else if(el.type==='text'){h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('文字','txt',el.text)+R('颜色','c',el.color||'#000','color')+R('字号','fs',el.font_size||20,'number')}
+  else if(el.type==='entity_text'){h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('实体','eid',el.entity_id)+R('前缀','pfx',el.prefix||'')+R('后缀','sfx',el.suffix||'')+R('颜色','c',el.color||'#000','color')+R('字号','fs',el.font_size||20,'number');h+=`<button class="btn btn-s btn-sm" style="margin-top:3px" onclick="pickEntityForProp()">🔍 选择</button> <button class="btn btn-s btn-sm" onclick="refreshEntityState()">🔄 刷新</button>`}
+  else if(el.type==='computed_text'){h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('颜色','c',el.color||'#4895ef','color')+R('字号','fs',el.font_size||20,'number');h+=R('图标宽','ciw',el.width||'','number')+R('图标高','cih',el.height||'','number');h+=`<div style="margin-top:4px"><div style="font-size:10px;color:var(--text2)">Jinja2 模板（输出文字 或 /路径/图标.svg|.png）:</div><textarea id="p-tpl" style="width:100%;height:60px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none">${el.template||''}</textarea></div>`;h+=`<button class="btn btn-s btn-sm" style="margin-top:3px" onclick="previewComputed()">▶ 预览</button>`}
+  else if(el.type==='image'){
+    h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('宽','iw',el.width||64,'number')+R('高','ih',el.height||64,'number');
+    h+=R('透明度','opacity',el.opacity??1,'number');
+    h+=`<div class="row"><label>保持比</label><label style="width:auto"><input type="checkbox" id="p-aspect"${el.keep_aspect!==false?' checked':''}> 开启</label></div>`;
+    if(el.svg_content){
+      h+=`<div style="font-size:10px;color:var(--ac);margin:5px 0 2px">✅ SVG 内容已嵌入（${Math.round(el.svg_content.length/1024*10)/10}KB）</div>`;
+      h+=`<div class="btn-group" style="margin-top:3px">
+        <button class="btn btn-s btn-sm" onclick="$('p-svg-local').click()">🔄 重新选择文件</button>
+        <button class="btn btn-d btn-sm" onclick="clearPropSvgContent()">× 清除</button>
+      </div>`;
+    } else {
+      h+=`<div style="font-size:10px;color:var(--text2);margin:5px 0 2px">SVG/图片来源:</div>`;
+      h+=`<div class="btn-group" style="margin-top:3px">
+        <button class="btn btn-s btn-sm" onclick="$('p-svg-local').click()">📁 本地SVG</button>
+        <button class="btn btn-s btn-sm" onclick="openImgPickerForProp()">📂 从HA选择</button>
+      </div>`;
+      h+=`<div style="font-size:10px;color:var(--text2);margin:4px 0 2px">或服务器路径:</div>`;
+      h+=`<div style="display:flex;gap:4px"><input type="text" id="p-imgpath" value="${el.path||''}" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:10px;outline:none"></div>`;
+      h+=`<button class="btn btn-s btn-sm" style="margin-top:4px" onclick="reloadImgPreview()">🔄 重载预览</button>`;
+    }
+    h+=`<input type="file" id="p-svg-local" accept="image/*,.svg" class="hidden-input" onchange="propLoadLocalImg(this)">`;
+    if(el._img_obj)h+=`<div style="margin-top:6px"><img src="${el._img_obj.src}" style="max-width:100%;max-height:80px;border-radius:3px;border:1px solid var(--bd)"></div>`;
+    else if(el.path&&!el.svg_content)h+=`<div style="font-size:10px;color:var(--warn);margin-top:4px">⚠ 预览未加载</div>`;
+  }
+  else if(el.type==='calendar'){
+    h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('宽','cw',el.width||380,'number')+R('高','ch',el.height||280,'number');
+    h+=R('年','year',el.year||'','number')+R('月','month',el.month||'','number');
+    h+=`<div class="row"><label>语言</label><select id="p-lang" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="zh"${el.lang==='zh'?' selected':''}>中文</option><option value="en"${el.lang==='en'?' selected':''}>English</option></select></div>`;
+    h+=`<div class="row"><label>周首日</label><select id="p-fwd" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="0"${el.first_weekday===0?' selected':''}>周一</option><option value="6"${el.first_weekday===6?' selected':''}>周日</option></select></div>`;
+    h+=`<div style="font-size:10px;color:var(--text2);margin:4px 0">日历实体（逗号分隔）:</div><input type="text" id="p-cal-ents" value="${(el.calendar_entities||[]).join(', ')}" style="width:100%;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px;outline:none;margin-bottom:4px">`;
+    h+=`<div class="btn-group"><button class="btn btn-s btn-sm" onclick="pickCalEntityForProp()">🔍 选实体</button><button class="btn btn-s btn-sm" onclick="fetchCalPreviewForProp()">🔄 获取事件</button></div>`;
+    if(el._preview_events&&el._preview_events.length)h+=`<div style="font-size:10px;color:var(--ac);margin-top:4px">已加载 ${el._preview_events.length} 条事件</div>`;
+  }
+  p.innerHTML=h}
+function hideProps(){$('props-sec').style.display='none'}
+function applyProps(){if(selIdx<0)return;const el=elements[selIdx],g=id=>{const i=$('p-'+id);return i?i.value:''},gn=id=>parseInt(g(id))||0;
+  if(el.type==='rectangle'){el.x=gn('x');el.y=gn('y');el.width=gn('w');el.height=gn('h');el.outline=g('ol');el.fill=g('fl');el.line_width=gn('lw')}
+  else if(el.type==='line'){el.points=[gn('x1'),gn('y1'),gn('x2'),gn('y2')];el.color=g('c');el.line_width=gn('lw')}
+  else if(el.type==='point'){el.x=gn('x');el.y=gn('y');el.radius=gn('r');el.color=g('c')}
+  else if(el.type==='text'){el.x=gn('x');el.y=gn('y');el.text=g('txt');el.color=g('c');el.font_size=gn('fs')}
+  else if(el.type==='entity_text'){el.x=gn('x');el.y=gn('y');el.entity_id=g('eid');el.prefix=g('pfx');el.suffix=g('sfx');el.color=g('c');el.font_size=gn('fs')}
+  else if(el.type==='computed_text'){el.x=gn('x');el.y=gn('y');el.color=g('c');el.font_size=gn('fs');
+    const ciw=gn('ciw'),cih=gn('cih');if(ciw)el.width=ciw;else delete el.width;if(cih)el.height=cih;else delete el.height;
+    const tpl=$('p-tpl');if(tpl)el.template=tpl.value}
+  else if(el.type==='image'){
+    el.x=gn('x');el.y=gn('y');el.width=gn('iw')||64;el.height=gn('ih')||64;
+    el.opacity=parseFloat(g('opacity'))||1;
+    const asp=$('p-aspect');if(asp)el.keep_aspect=asp.checked;
+    const pp=$('p-imgpath');if(pp&&pp.value.trim()!==el.path){el.path=pp.value.trim();el._img_obj=null;_loadImgObj(el);}
+  }
+  else if(el.type==='calendar'){
+    el.x=gn('x');el.y=gn('y');el.width=gn('cw')||380;el.height=gn('ch')||280;
+    const yr=gn('year');el.year=yr||null;
+    const mo=gn('month');el.month=mo||null;
+    const langEl=$('p-lang');if(langEl)el.lang=langEl.value;
+    const fwdEl=$('p-fwd');if(fwdEl)el.first_weekday=parseInt(fwdEl.value)||0;
+    const entsEl=$('p-cal-ents');if(entsEl)el.calendar_entities=entsEl.value.split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  refreshList();redraw()}
+
+async function previewComputed(){if(selIdx<0)return;const el=elements[selIdx];if(el.type!=='computed_text')return;
+  const tpl=$('p-tpl');if(tpl)el.template=tpl.value;
+  try{const r=await fetch('/api/epd_display/template_preview',{method:'POST',headers:authH(),body:JSON.stringify({template:el.template})});const j=await r.json();if(r.ok){
+    el._rendered=j.result;
+    const trimmed=j.result.trim();
+    const isImgPath=/^\/.*\.(png|jpg|jpeg|bmp|gif|webp|svg)$/i.test(trimmed);
+    const isSvgContent=trimmed.startsWith('<svg')||trimmed.startsWith('<?xml');
+    if(isSvgContent){
+      // SVG 内容：用 Blob URL 在画布上预览
+      el._img_obj=null;
+      const blob=new Blob([trimmed],{type:'image/svg+xml'});
+      const url=URL.createObjectURL(blob);
+      const im=new Image();im.crossOrigin='anonymous';
+      im.onload=()=>{el._img_obj=im;redraw();};im.src=url;
+      toast('SVG内容预览已加载');
+    }else if(isImgPath){
+      el._img_obj=null;
+      const url=imgPathToPreviewUrl(trimmed);
+      if(url){const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{el._img_obj=im;redraw()};im.src=url;}
+      toast('图标路径: '+trimmed.split('/').pop());
+    }else{el._img_obj=null;toast('预览: '+j.result);}
+    redraw();
+  }else toast('❌ '+j.error)}catch(e){toast('❌ '+e.message)}}
+
+function delElem(i){elements.splice(i,1);if(selIdx>=elements.length)selIdx=elements.length-1;refreshList();redraw()}
+function delSelected(){if(selIdx>=0)delElem(selIdx)}
+function clearAll(){if(elements.length&&!confirm('清空？'))return;elements=[];selIdx=-1;refreshList();redraw()}
+
+// ── Entities ──
+let allEntities=[],entityPickCb=null;
+async function loadEntities(){try{const r=await fetch('/api/epd_display/entities',{headers:authH()});if(r.ok)allEntities=await r.json()}catch(e){}}
+loadEntities();
+function addEntityText(){entityPickCb=(eid,state)=>{elements.push({type:'entity_text',x:50,y:50,entity_id:eid,prefix:'',suffix:'',color:'#000000',font_size:24,font_path:'',_state:state});selIdx=elements.length-1;refreshList();redraw()};openEntityPicker()}
+function pickEntityForProp(){entityPickCb=(eid,state)=>{const inp=$('p-eid');if(inp)inp.value=eid;if(selIdx>=0){elements[selIdx].entity_id=eid;elements[selIdx]._state=state}redraw()};openEntityPicker()}
+async function refreshEntityState(){if(selIdx<0)return;const el=elements[selIdx];if(el.type!=='entity_text')return;await loadEntities();const f=allEntities.find(e=>e.entity_id===el.entity_id);el._state=f?f.state:'N/A';redraw();toast('已刷新')}
+async function refreshAllStates(){await loadEntities();elements.forEach(el=>{if(el.type==='entity_text'){const f=allEntities.find(e=>e.entity_id===el.entity_id);el._state=f?f.state:'N/A'}});redraw()}
+function openEntityPicker(){$('entity-search').value='';renderEntityList('');$('entity-modal').classList.add('open');setTimeout(()=>$('entity-search').focus(),100)}
+function filterEntities(){renderEntityList($('entity-search').value.toLowerCase())}
+function renderEntityList(f){const c=$('entity-list-container');c.innerHTML='';allEntities.filter(e=>!f||e.entity_id.toLowerCase().includes(f)||(e.name||'').toLowerCase().includes(f)).slice(0,200).forEach(e=>{const d=document.createElement('div');d.className='entity-row';d.innerHTML=`<span class="eid">${e.entity_id}</span><span class="ename">${e.name||''}</span><span class="estate">${e.state}${e.unit?' '+e.unit:''}</span>`;d.addEventListener('click',()=>{closeModal('entity-modal');if(entityPickCb)entityPickCb(e.entity_id,e.state)});c.appendChild(d)})}
+
+// ══════ Build data / YAML / JSON / PNG ══════
+function buildData(){const d={width:cW,height:cH,background_color:bgColor};if(bgImgPath)d.background_image=bgImgPath;
+  d.elements=elements.map(el=>{const o={...el};delete o._state;delete o._rendered;delete o._preview_events;delete o._img_obj;if(o.type==='rectangle'&&!o.fill)delete o.fill;if(o.font_path==='')delete o.font_path;return o});
+  d.output_filename='epd_editor_output.png';return d}
+function fmtVal(v){if(typeof v==='string'){if(!v||v.includes(':')||v.includes('#')||v.includes("'")||v.includes('{'))return`"${v.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"`;return v}if(Array.isArray(v))return'['+v.join(', ')+']';return String(v)}
+function toYAML(obj,ind=0){const pad='  '.repeat(ind);let out='';if(Array.isArray(obj)){obj.forEach(item=>{if(typeof item==='object'&&item&&!Array.isArray(item)){const ks=Object.keys(item);out+=`${pad}- ${ks[0]}: ${fmtVal(item[ks[0]])}\n`;ks.slice(1).forEach(k=>out+=`${pad}  ${k}: ${fmtVal(item[k])}\n`)}else out+=`${pad}- ${fmtVal(item)}\n`})}else if(typeof obj==='object'&&obj){Object.keys(obj).forEach(k=>{const v=obj[k];if(Array.isArray(v))out+=`${pad}${k}:\n`+toYAML(v,ind+1);else if(typeof v==='object'&&v)out+=`${pad}${k}:\n`+toYAML(v,ind+1);else out+=`${pad}${k}: ${fmtVal(v)}\n`})}return out}
+function openYaml(){$('yaml-out').value=`service: epd_display.generate_image\ndata:\n${toYAML(buildData(),1)}`;$('yaml-modal').classList.add('open')}
+function exportJSON(){const b=new Blob([JSON.stringify({cW,cH,bgColor,bgImgPath,elements:JSON.parse(JSON.stringify(elements))},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='epd_project.json';a.click()}
+function importJSON(){const inp=$('import-input');inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);cW=d.cW||800;cH=d.cH||480;bgColor=d.bgColor||'#fff';bgImgPath=d.bgImgPath||'';elements=d.elements||[];selIdx=-1;$('cw').value=cW;$('ch').value=cH;$('bg-color').value=bgColor;applyCanvas();refreshList();redraw();refreshAllStates();restoreImgObjs();toast('已导入')}catch(e){toast('错误: '+e.message)}};r.readAsText(f);inp.value=''};inp.click()}
+function downloadPNG(){const sv=selIdx;selIdx=-1;redraw();canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='epd_output.png';a.click();selIdx=sv;redraw()},'image/png')}
+
+// ── HA API ──
+async function generateOnHA(){await refreshAllStates();const d=buildData();try{const r=await fetch('/api/epd_display/generate',{method:'POST',headers:authH(),body:JSON.stringify(d)});const j=await r.json();if(r.ok)toast('✅ 已保存: '+j.path);else toast('❌ '+j.error)}catch(e){toast('❌ '+e.message)}}
+async function generateAndSend(){await refreshAllStates();const d=buildData();try{const r1=await fetch('/api/epd_display/generate',{method:'POST',headers:authH(),body:JSON.stringify(d)});const j1=await r1.json();if(!r1.ok){toast('❌ '+j1.error);return}const r2=await fetch('/api/services/epd_display/display_image',{method:'POST',headers:authH(),body:JSON.stringify({image_path:j1.path,canvas:haConfig.defaults.canvas,dither_mode:haConfig.defaults.dither_mode})});if(r2.ok)toast('✅ 已发送！');else toast('❌ 发送失败')}catch(e){toast('❌ '+e.message)}}
+
+// ══════ Template Management ══════
+let tplList=[], selectedTpl='';
+async function loadTemplateList(){try{const r=await fetch('/api/epd_display/templates',{headers:authH()});if(r.ok){const j=await r.json();tplList=j.templates||[]}}catch(e){}renderTplList()}
+function renderTplList(){const c=$('tpl-list');c.innerHTML='';if(!tplList.length){c.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">暂无模板</div>';return}
+  tplList.forEach(n=>{const d=document.createElement('div');d.className='tpl-item'+(n===selectedTpl?' sel':'');d.innerHTML=`<span class="name">${n}</span><button class="del" onclick="event.stopPropagation();deleteTpl('${n}')">×</button>`;d.addEventListener('click',()=>{selectedTpl=n;renderTplList();loadTplToEditor(n)});c.appendChild(d)})}
+
+async function loadTplToEditor(name){try{const r=await fetch('/api/epd_display/templates/'+encodeURIComponent(name),{headers:authH()});if(r.ok){const d=await r.json();$('yaml-editor').value=toYAML(d);toast('已加载: '+name)}}catch(e){toast('❌ '+e.message)}}
+
+function saveCurrentAsTemplate(){$('tpl-name-input').value='';$('tpl-name-modal').classList.add('open');window._tplSaveSource='editor'}
+function yamlSaveAsTemplate(){$('tpl-name-input').value='';$('tpl-name-modal').classList.add('open');window._tplSaveSource='yaml'}
+
+async function confirmSaveTemplate(){const name=$('tpl-name-input').value.trim();if(!name){toast('请输入名称');return}closeModal('tpl-name-modal');
+  let data;
+  if(window._tplSaveSource==='yaml'){try{data=await parseYamlViaAPI($('yaml-editor').value)}catch(e){toast('YAML解析错误: '+e.message);return}}
+  else{data=buildData()}
+  try{const r=await fetch('/api/epd_display/templates/'+encodeURIComponent(name),{method:'PUT',headers:authH(),body:JSON.stringify(data)});if(r.ok){toast('✅ 模板已保存: '+name);loadTemplateList()}else toast('❌ 保存失败')}catch(e){toast('❌ '+e.message)}}
+
+async function deleteTpl(name){if(!confirm(`删除模板 "${name}"？`))return;try{await fetch('/api/epd_display/templates/'+encodeURIComponent(name),{method:'DELETE',headers:authH()});toast('已删除');if(selectedTpl===name)selectedTpl='';loadTemplateList()}catch(e){toast('❌ '+e.message)}}
+
+// ── YAML code editor actions ──
+// YAML 解析委托给后端 Python yaml.safe_load（支持所有合法 YAML 语法）
+async function parseYamlViaAPI(text) {
+  const r = await fetch('/api/epd_display/parse_yaml', {
+    method: 'POST', headers: authH(),
+    body: JSON.stringify({yaml: text})
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'YAML解析失败');
+  return j.result;
+}
+
+async function yamlPreviewGenerate(){
+  let data;try{data=await parseYamlViaAPI($('yaml-editor').value)}catch(e){$('yaml-preview').textContent='YAML错误: '+e.message;return}
+  try{const r=await fetch('/api/epd_display/generate',{method:'POST',headers:authH(),body:JSON.stringify(data)});const j=await r.json();if(r.ok)$('yaml-preview').textContent='✅ 生成成功: '+j.path;else $('yaml-preview').textContent='❌ '+j.error}catch(e){$('yaml-preview').textContent='❌ '+e.message}}
+
+async function yamlGenerateAndSend(){
+  let data;try{data=await parseYamlViaAPI($('yaml-editor').value)}catch(e){toast('YAML错误');return}
+  try{const r1=await fetch('/api/epd_display/generate',{method:'POST',headers:authH(),body:JSON.stringify(data)});const j1=await r1.json();if(!r1.ok){toast('❌ '+j1.error);return}
+    const r2=await fetch('/api/services/epd_display/display_image',{method:'POST',headers:authH(),body:JSON.stringify({image_path:j1.path,canvas:haConfig.defaults.canvas,dither_mode:haConfig.defaults.dither_mode})});if(r2.ok)toast('✅ 已生成并发送');else toast('❌ 发送失败')}catch(e){toast('❌ '+e.message)}}
+
+function yamlTestTemplate(){$('tpl-test-input').value='';$('tpl-test-result').textContent='结果';$('tpl-test-modal').classList.add('open')}
+async function runTemplateTest(){const tpl=$('tpl-test-input').value;try{const r=await fetch('/api/epd_display/template_preview',{method:'POST',headers:authH(),body:JSON.stringify({template:tpl})});const j=await r.json();$('tpl-test-result').textContent=r.ok?'✅ '+j.result:'❌ '+j.error}catch(e){$('tpl-test-result').textContent='❌ '+e.message}}
+
+// ── Keyboard ──
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(e.key==='Delete'||e.key==='Backspace'){delSelected();e.preventDefault()}if(e.key==='v')setTool('select');if(e.key==='r')setTool('rectangle');if(e.key==='l')setTool('line');if(e.key==='p')setTool('point');if(e.key==='t')setTool('text');if(e.key==='Escape'){selIdx=-1;refreshList();redraw();hideProps()}});
+
+// ══════ HA Background Image Picker ══════
+let bgPickerFiles = [], bgPickerSel = null, bgPickerDir = '';
+
+async function openBgPicker() {
+  bgPickerSel = null;
+  bgPickerDir = '';
+  $('bg-search').value = '';
+  $('bg-confirm-btn').disabled = true;
+  $('bg-picker-modal').classList.add('open');
+  await loadBgList();
+}
+
+async function loadBgList(subdir) {
+  if (subdir !== undefined) bgPickerDir = subdir;
+  const search = $('bg-search').value.trim();
+  const params = new URLSearchParams();
+  if (bgPickerDir) params.set('subdir', bgPickerDir);
+  if (search)      params.set('search', search);
+  $('bg-picker-grid').innerHTML = '<div style="color:var(--text3);font-size:12px;padding:20px 0">加载中…</div>';
+  $('bg-dir-row').innerHTML = '';
+  try {
+    const r = await fetch('/api/epd_display/media_list?' + params, { headers: authH() });
+    const j = await r.json();
+    if (!r.ok) { $('bg-picker-grid').innerHTML = `<div style="color:var(--warn)">${j.error||'错误'}</div>`; return; }
+    bgPickerFiles = j.files || [];
+    renderBgBreadcrumb();
+    renderBgDirs(j.dirs || []);
+    renderBgGrid(bgPickerFiles);
+  } catch(e) {
+    $('bg-picker-grid').innerHTML = `<div style="color:var(--warn)">请求失败: ${e.message}</div>`;
+  }
+}
+
+function renderBgBreadcrumb() {
+  const parts = bgPickerDir ? bgPickerDir.split('/') : [];
+  let html = '<a onclick="loadBgList(\'\')">根目录</a>';
+  let built = '';
+  parts.forEach((p, i) => {
+    built += (built ? '/' : '') + p;
+    const path = built;
+    html += ` / <a onclick="loadBgList('${path}')">${p}</a>`;
+  });
+  $('bg-breadcrumb').innerHTML = html;
+}
+
+function renderBgDirs(dirs) {
+  const c = $('bg-dir-row');
+  c.innerHTML = '';
+  dirs.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-s btn-sm';
+    btn.textContent = '📁 ' + d.name;
+    btn.onclick = () => loadBgList(d.path.replace(/^www\/?/, ''));
+    c.appendChild(btn);
+  });
+}
+
+function renderBgGrid(files) {
+  const grid = $('bg-picker-grid');
+  grid.innerHTML = '';
+  if (!files.length) {
+    grid.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:20px 0">此目录下没有图片</div>';
+    return;
+  }
+  files.forEach(f => {
+    const div = document.createElement('div');
+    div.className = 'bg-thumb' + (bgPickerSel === f.abs_path ? ' sel' : '');
+    div.dataset.abs = f.abs_path;
+    div.dataset.preview = f.preview_url;
+    div.innerHTML = `
+      <img src="${f.preview_url}" loading="lazy" onerror="this.style.display='none'">
+      <div class="label" title="${f.name}">${f.name}</div>`;
+    div.onclick = () => {
+      bgPickerSel = f.abs_path;
+      bgPickerSelPreview = f.preview_url;
+      document.querySelectorAll('.bg-thumb').forEach(t => t.classList.remove('sel'));
+      div.classList.add('sel');
+      $('bg-confirm-btn').disabled = false;
+    };
+    grid.appendChild(div);
+  });
+}
+
+function bgSearch() {
+  // debounce slightly
+  clearTimeout(window._bgSearchTimer);
+  window._bgSearchTimer = setTimeout(() => loadBgList(), 300);
+}
+
+let bgPickerSelPreview = '';
+
+function confirmBgPick() {
+  if (!bgPickerSel) return;
+  // Load via proxy URL as an Image object, set as bgImg for canvas preview
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    bgImg = img;
+    bgImgPath = bgPickerSel;   // absolute FS path – passed to backend as background_image
+    // show path hint
+    const row = $('bg-path-row');
+    if (row) { row.textContent = bgPickerSel; row.style.display = 'block'; }
+    redraw();
+    toast('✅ 已设置底图');
+  };
+  img.onerror = () => toast('❌ 图片加载失败');
+  img.src = bgPickerSelPreview;
+  closeModal('bg-picker-modal');
+}
+
+// ══════ Image element helpers ══════
+
+// 将服务器绝对路径 /config/www/... 转换为 HA /local/... 代理 URL 用于预览
+function imgPathToPreviewUrl(path){
+  if(!path)return null;
+  // /config/www/xxx → /local/xxx
+  const m=path.match(/^\/config\/www\/(.+)$/);
+  if(m)return'/local/'+m[1];
+  // /config/epd_images/xxx → /local/epd_images/xxx (symlink needed) 或 直接用 media_list abs url
+  return null;
+}
+
+// 通用：给 element 加载 _img_obj（Image 对象）
+function _loadImgObj(el){
+  const url=imgPathToPreviewUrl(el.path);
+  if(!url)return;
+  const im=new Image();im.crossOrigin='anonymous';
+  im.onload=()=>{el._img_obj=im;refreshList();redraw();};
+  im.onerror=()=>{el._img_obj=null;};
+  im.src=url;
+}
+
+// 从 JSON 导入后恢复所有 image 元素的预览对象
+function restoreImgObjs(){
+  elements.forEach(el=>{if(el.type==='image'&&el.path&&!el._img_obj)_loadImgObj(el);});
+}
+
+// 工具栏"从HA选择"按钮：选择后设置 img-path + 显示缩略图
+let _imgPickerTarget=null; // 'tool' | 'prop'
+// ── 图标工具本地文件上传 ──
+let _imgToolSvgContent = '';  // 当前工具选中的 SVG 内容（字符串）
+let _imgToolDataUrl = '';     // 位图 data URL（用于画布预览）
+
+$('img-local-file').addEventListener('change', function(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const isSvg = f.name.toLowerCase().endsWith('.svg') || f.type === 'image/svg+xml';
+  const reader = new FileReader();
+  if (isSvg) {
+    reader.onload = ev => {
+      _imgToolSvgContent = ev.target.result;
+      _imgToolDataUrl = '';
+      // 用 Blob URL 预览
+      const blob = new Blob([_imgToolSvgContent], {type:'image/svg+xml'});
+      const url = URL.createObjectURL(blob);
+      const prev = $('img-tool-preview'), thumb = $('img-tool-thumb');
+      prev.src = url; thumb.style.display = 'block';
+      $('img-path').value = '';  // 清空路径，以 svg_content 优先
+      toast('📄 SVG已读取: ' + f.name);
+    };
+    reader.readAsText(f);
+  } else {
+    reader.onload = ev => {
+      _imgToolDataUrl = ev.target.result;
+      _imgToolSvgContent = '';
+      const prev = $('img-tool-preview'), thumb = $('img-tool-thumb');
+      prev.src = _imgToolDataUrl; thumb.style.display = 'block';
+      toast('🖼 图片已加载: ' + f.name + '（需服务器路径才能渲染）');
+    };
+    reader.readAsDataURL(f);
+  }
+  e.target.value = '';
+});
+function openImgPickerForProp(){_imgPickerTarget='prop';_openImgPicker();}
+
+// 属性面板：本地文件读取到 svg_content
+function propLoadLocalImg(input){
+  if(selIdx<0||!input.files[0])return;
+  const el=elements[selIdx]; const f=input.files[0];
+  const isSvg=f.name.toLowerCase().endsWith('.svg')||f.type==='image/svg+xml';
+  const reader=new FileReader();
+  if(isSvg){
+    reader.onload=ev=>{
+      el.svg_content=ev.target.result; el.path=''; el._img_obj=null;
+      const blob=new Blob([el.svg_content],{type:'image/svg+xml'});
+      const url=URL.createObjectURL(blob);
+      const im=new Image();im.crossOrigin='anonymous';
+      im.onload=()=>{el._img_obj=im;showProps(selIdx);redraw()};im.src=url;
+      toast('SVG已嵌入: '+f.name);
+    };
+    reader.readAsText(f);
+  } else {
+    reader.onload=ev=>{
+      el.svg_content=''; el._img_obj=null;
+      const im=new Image();im.onload=()=>{el._img_obj=im;showProps(selIdx);redraw()};
+      im.src=ev.target.result;
+      toast('图片已加载（需服务器路径渲染）');
+    };
+    reader.readAsDataURL(f);
+  }
+  input.value='';
+}
+function clearPropSvgContent(){
+  if(selIdx<0)return;
+  elements[selIdx].svg_content='';elements[selIdx]._img_obj=null;
+  showProps(selIdx);redraw();
+}
+
+function _openImgPicker(){
+  // 复用 bg-picker-modal，但覆盖确认回调
+  bgPickerSel=null;bgPickerSelPreview='';
+  $('bg-search').value='';
+  $('bg-confirm-btn').disabled=true;
+  $('bg-confirm-btn').textContent='✅ 插入图标';
+  $('bg-picker-modal').querySelector('h2').textContent='📂 选择图标文件';
+  $('bg-picker-modal').classList.add('open');
+  // 重写确认按钮行为
+  $('bg-confirm-btn').onclick=_confirmImgPick;
+  loadBgList();
+}
+
+function _confirmImgPick(){
+  if(!bgPickerSel)return;
+  if(_imgPickerTarget==='tool'){
+    $('img-path').value=bgPickerSel;
+    // 预览缩略图
+    const thumb=$('img-tool-thumb'),prev=$('img-tool-preview');
+    if(bgPickerSelPreview){prev.src=bgPickerSelPreview;thumb.style.display='block';}
+  }else if(_imgPickerTarget==='prop'&&selIdx>=0){
+    const el=elements[selIdx];
+    el.path=bgPickerSel;el._img_obj=null;
+    _loadImgObj(el);
+    // 更新属性面板路径输入框
+    const pp=$('p-imgpath');if(pp)pp.value=bgPickerSel;
+    showProps(selIdx);
+  }
+  // 恢复bg-picker原来的标题和回调
+  $('bg-confirm-btn').textContent='✅ 使用选中图片';
+  $('bg-picker-modal').querySelector('h2').textContent='📂 从 HA 选择底图';
+  $('bg-confirm-btn').onclick=confirmBgPick;
+  closeModal('bg-picker-modal');
+  toast('✅ 已选择: '+bgPickerSel.split('/').pop());
+}
+
+// 属性面板"重载预览"
+function reloadImgPreview(){
+  if(selIdx<0)return;
+  const el=elements[selIdx];
+  const pp=$('p-imgpath');if(pp&&pp.value)el.path=pp.value;
+  el._img_obj=null;
+  _loadImgObj(el);
+  toast('重新加载中…');
+}
+function pickCalendarEntity(){
+  entityPickCb=(eid)=>{
+    const inp=$('cal-entities');
+    if(inp){const cur=inp.value.trim();inp.value=cur?(cur+', '+eid):eid;}
+  };
+  openEntityPicker();
+}
+function pickCalEntityForProp(){
+  entityPickCb=(eid)=>{
+    const inp=$('p-cal-ents');
+    if(inp){const cur=inp.value.trim();inp.value=cur?(cur+', '+eid):eid;}
+    if(selIdx>=0){const el=elements[selIdx];if(el&&el.type==='calendar'){const cur=(el.calendar_entities||[]);if(!cur.includes(eid))el.calendar_entities=[...cur,eid];}}
+  };
+  openEntityPicker();
+}
+async function fetchCalPreviewForProp(){
+  if(selIdx<0)return;
+  const el=elements[selIdx];
+  if(!el||el.type!=='calendar')return;
+  const ents=el.calendar_entities||[];
+  if(!ents.length){toast('请先设置日历实体');return}
+  const now=new Date();
+  const yr=el.year||now.getFullYear();
+  const mo=el.month||now.getMonth()+1;
+  const params=ents.map(e=>`entity_id=${encodeURIComponent(e)}`).join('&');
+  try{
+    const r=await fetch(`/api/epd_display/calendar_events?${params}&year=${yr}&month=${mo}`,{headers:authH()});
+    if(r.ok){const j=await r.json();el._preview_events=j.events||[];redraw();showProps(selIdx);toast(`已加载 ${el._preview_events.length} 条事件`);}
+    else{const j=await r.json();toast('❌ '+j.error);}
+  }catch(e){toast('❌ '+e.message);}
+}
+
+function _drawCalendarPreview(ctx, el){
+  const x=el.x, y=el.y, w=el.width||380, h=el.height||280;
+  const now=new Date();
+  const yr=el.year||now.getFullYear();
+  const mo=(el.month||now.getMonth()+1)-1;
+  const lang=el.lang||'zh';
+  const fwd=el.first_weekday||0;
+  const events=el._preview_events||[];
+  ctx.save();
+  ctx.fillStyle='#FFFFFF';ctx.strokeStyle='#CCCCCC';ctx.lineWidth=1;
+  ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);
+  const headerH=Math.round(h*0.12);
+  ctx.fillStyle='#1A4B8C';ctx.fillRect(x,y,w,headerH);
+  ctx.fillStyle='#FFFFFF';ctx.font=`bold ${Math.round(headerH*0.55)}px sans-serif`;
+  ctx.textBaseline='middle';ctx.textAlign='center';
+  const mZh=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const mEn=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const title=lang==='zh'?`${yr}年 ${mZh[mo]}`:`${mEn[mo]} ${yr}`;
+  ctx.fillText(title,x+w/2,y+headerH/2);
+  const wdH=Math.round(h*0.09),wdY=y+headerH,cellW=w/7;
+  const dZh=fwd===0?['一','二','三','四','五','六','日']:['日','一','二','三','四','五','六'];
+  const dEn=fwd===0?['Mo','Tu','We','Th','Fr','Sa','Su']:['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const days=lang==='zh'?dZh:dEn;
+  ctx.font=`${Math.round(wdH*0.55)}px sans-serif`;
+  days.forEach((d,i)=>{
+    const isW=(fwd===0&&i>=5)||(fwd===6&&i===0);
+    ctx.fillStyle='#F0F4F8';ctx.fillRect(x+i*cellW,wdY,cellW,wdH);
+    ctx.fillStyle=isW?'#CC3333':'#333333';ctx.fillText(d,x+i*cellW+cellW/2,wdY+wdH/2);
+  });
+  const gridY=wdY+wdH,gridH=h-(headerH+wdH);
+  const firstDay=new Date(yr,mo,1).getDay();
+  const offset=fwd===0?(firstDay+6)%7:firstDay;
+  const dim=new Date(yr,mo+1,0).getDate();
+  const rows=Math.ceil((offset+dim)/7);
+  const cellH=gridH/rows;
+  const todayD=new Date(),isThisMo=todayD.getFullYear()===yr&&todayD.getMonth()===mo;
+  const evDays=new Set();
+  events.forEach(ev=>{const d=new Date(ev.start);if(d.getFullYear()===yr&&d.getMonth()===mo)evDays.add(d.getDate());});
+  ctx.font=`${Math.round(Math.min(cellH,cellW)*0.38)}px sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let i=0;i<rows*7;i++){
+    const col=i%7,row=Math.floor(i/7),day=i-offset+1,inM=day>=1&&day<=dim;
+    const cx=x+col*cellW,cy=gridY+row*cellH;
+    ctx.fillStyle=(row%2===0)?'#FFFFFF':'#F8FBFF';ctx.fillRect(cx,cy,cellW,cellH);
+    ctx.strokeStyle='#E0E8F0';ctx.lineWidth=0.5;ctx.strokeRect(cx,cy,cellW,cellH);
+    if(!inM)continue;
+    const isToday=isThisMo&&day===todayD.getDate();
+    if(isToday){
+      const r=Math.min(cellW,cellH)*0.38;
+      ctx.fillStyle='#1A4B8C';ctx.beginPath();ctx.arc(cx+cellW/2,cy+cellH*0.42,r,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#FFFFFF';
+    } else {ctx.fillStyle=((fwd===0&&col>=5)||(fwd===6&&col===0))?'#CC3333':'#222222';}
+    ctx.fillText(String(day),cx+cellW/2,cy+cellH*0.42);
+    if(evDays.has(day)){ctx.fillStyle='#E06020';ctx.beginPath();ctx.arc(cx+cellW/2,cy+cellH*0.78,Math.min(cellW,cellH)*0.08,0,Math.PI*2);ctx.fill();}
+  }
+  ctx.restore();
+}
+
+// ── Init
+redraw();refreshList();
+</script>
+</body>
+</html>
