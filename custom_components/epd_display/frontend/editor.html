@@ -61,7 +61,7 @@ header h1{font-size:14px;font-weight:600}
 .el-item:hover{border-color:var(--sf3)}.el-item.sel{border-color:var(--ac);background:rgba(34,211,167,.05)}
 .el-item .badge{font-size:8px;padding:1px 4px;border-radius:2px;color:#fff;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
 .el-item .badge.rect{background:#2d6a4f}.el-item .badge.line{background:#e76f51}.el-item .badge.point{background:#457b9d}.el-item .badge.text{background:#6d597a}.el-item .badge.entity{background:#d4a373}.el-item .badge.computed{background:#4895ef}.el-item .badge.calendar{background:#7b5ea7}
-.el-item .badge.image{background:#2b6cb0}
+.el-item .badge.image{background:#2b6cb0}.el-item .badge.textbox{background:#7c3d8f}
 .el-item .info{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .el-item .x-btn{background:none;border:none;color:#f66;cursor:pointer;font-size:13px;padding:0 2px;line-height:1}
 #props-sec{display:none}
@@ -180,6 +180,7 @@ header h1{font-size:14px;font-weight:600}
         <button class="btn btn-s" data-tool="point" onclick="setTool('point')">● 点</button>
         <button class="btn btn-s" data-tool="text" onclick="setTool('text')">T 文字</button>
         <button class="btn btn-s" data-tool="computed" onclick="setTool('computed')">{} 代码</button>
+        <button class="btn btn-s" data-tool="textbox" onclick="setTool('textbox')">☰ 文本框</button>
         <button class="btn btn-s" data-tool="image" onclick="setTool('image')">🖼 图标</button>
         <button class="btn btn-s" data-tool="calendar" onclick="setTool('calendar')">📅 日历</button>
         <button class="btn btn-s" style="grid-column:span 3" onclick="addEntityText()">📊 添加传感器实体</button>
@@ -194,6 +195,42 @@ header h1{font-size:14px;font-weight:600}
         <div style="font-size:10px;color:var(--text2);margin:4px 0">Jinja2 模板：输出<b>文字</b>或<b>图片路径</b>:</div>
         <textarea id="comp-tpl" style="width:100%;height:60px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:6px;resize:vertical;outline:none" placeholder="文字: {{ states('sensor.temp') }}°C
 图标: /config/www/icons/{{ states('sun.sun') }}.png"></textarea>
+      </div>
+      <div id="textbox-opts" style="display:none">
+        <div class="row"><label>字号</label><input type="number" id="tb-fs" value="20" min="6" max="200"></div>
+        <div class="row"><label>内边距</label><input type="number" id="tb-pad" value="6" min="0" max="100"></div>
+        <div class="row"><label>行间距</label><input type="number" id="tb-lsp" value="2" min="0" max="50"></div>
+        <div class="row"><label>对齐</label>
+          <select id="tb-align" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px">
+            <option value="left">左对齐</option><option value="center">居中</option><option value="right">右对齐</option>
+          </select>
+        </div>
+        <div class="row"><label>垂直</label>
+          <select id="tb-valign" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px">
+            <option value="top">顶部</option><option value="middle">居中</option><option value="bottom">底部</option>
+          </select>
+        </div>
+        <div class="row"><label>底色</label><input type="color" id="tb-bg" value="#ffffff"><label style="width:auto"><input type="checkbox" id="tb-bg-on"> 启用</label></div>
+        <div class="row"><label>边框色</label><input type="color" id="tb-border" value="#000000"><label style="width:auto"><input type="checkbox" id="tb-border-on"> 启用</label></div>
+        <div style="font-size:10px;color:var(--text2);margin:6px 0 3px">内容来源：</div>
+        <div class="btn-group" style="margin-bottom:5px">
+          <button class="btn btn-s btn-sm" onclick="setTbMode('static')" id="tb-mode-static" style="flex:1">📝 静态文字</button>
+          <button class="btn btn-s btn-sm" onclick="setTbMode('entity')" id="tb-mode-entity" style="flex:1">📊 传感器</button>
+          <button class="btn btn-s btn-sm" onclick="setTbMode('computed')" id="tb-mode-computed" style="flex:1">{} 代码</button>
+        </div>
+        <div id="tb-sub-static">
+          <textarea id="tb-text" style="width:100%;height:52px;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none" placeholder="输入文字，\n 换行"></textarea>
+        </div>
+        <div id="tb-sub-entity" style="display:none">
+          <div class="row"><label>实体</label><input type="text" id="tb-eid" placeholder="sensor.xxx" style="flex:1"></div>
+          <div class="row"><label>前缀</label><input type="text" id="tb-pfx" placeholder="室温: "></div>
+          <div class="row"><label>后缀</label><input type="text" id="tb-sfx" placeholder="°C"></div>
+          <button class="btn btn-s btn-sm" style="margin-top:3px" onclick="pickEntityForTb()">🔍 选择实体</button>
+        </div>
+        <div id="tb-sub-computed" style="display:none">
+          <textarea id="tb-tpl" style="width:100%;height:52px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none" placeholder="{{ states('sensor.weather') }}"></textarea>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:5px">拖拽画布绘制文本框区域</div>
       </div>
       <div id="calendar-opts" style="display:none">
         <div class="row"><label>宽</label><input type="number" id="cal-w" value="380" min="100"><label>高</label><input type="number" id="cal-h" value="280" min="80"></div>
@@ -413,7 +450,7 @@ $('bg-color').addEventListener('input',function(){bgColor=this.value;redraw()});
 $('bg-file').addEventListener('change',function(e){const f=e.target.files[0];if(!f)return;bgImgPath=f.name;const img=new Image();img.onload=()=>{bgImg=img;redraw()};img.src=URL.createObjectURL(f)});
 function clearBg(){bgImg=null;bgImgPath='';$('bg-file').value='';const row=$('bg-path-row');if(row)row.style.display='none';redraw()}
 
-function setTool(t){curTool=t;document.querySelectorAll('.tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));$('fill-row').style.display=t==='rectangle'?'flex':'none';$('text-opts').style.display=t==='text'?'block':'none';$('point-opts').style.display=t==='point'?'block':'none';$('computed-opts').style.display=t==='computed'?'block':'none';$('calendar-opts').style.display=t==='calendar'?'block':'none';$('image-opts').style.display=t==='image'?'block':'none';canvas.style.cursor=t==='select'?'default':'crosshair'}
+function setTool(t){curTool=t;document.querySelectorAll('.tools .btn').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));$('fill-row').style.display=t==='rectangle'?'flex':'none';$('text-opts').style.display=t==='text'?'block':'none';$('point-opts').style.display=t==='point'?'block':'none';$('computed-opts').style.display=t==='computed'?'block':'none';$('textbox-opts').style.display=t==='textbox'?'block':'none';$('calendar-opts').style.display=t==='calendar'?'block':'none';$('image-opts').style.display=t==='image'?'block':'none';canvas.style.cursor=t==='select'?'default':'crosshair'}
 setTool('select');
 
 // ── Hit/bounds ──
@@ -424,6 +461,7 @@ function getBounds(el){
   if(el.type==='calendar')return{x:el.x,y:el.y,w:el.width||380,h:el.height||280};
   if(el.type==='image'){const iw=el.width||64,ih=el.height||64;return{x:el.x,y:el.y,w:iw,h:ih};}
   if(el.type==='computed_text'&&el.width&&el.height)return{x:el.x,y:el.y,w:el.width,h:el.height};
+  if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed')return{x:el.x,y:el.y,w:el.width||120,h:el.height||60};
   ctx.save();ctx.font=`${el.font_size||20}px sans-serif`;
   let t=el.text||'';
   if(el.type==='entity_text')t=(el.prefix||'')+(el._state||'{'+el.entity_id+'}')+(el.suffix||'');
@@ -473,17 +511,42 @@ canvas.addEventListener('mousedown',e=>{const p=canvasPos(e);startX=p.x;startY=p
       if(previewUrl){const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{el._img_obj=im;redraw()};im.src=previewUrl;}
     }
     elements.push(el);selIdx=elements.length-1;refreshList();redraw();return}
+  if(curTool==='textbox'){drawing=true;return}
   drawing=true});
 
 canvas.addEventListener('mousemove',e=>{const p=canvasPos(e);$('coords').textContent=`X: ${p.x}  Y: ${p.y}`;
   if(curTool==='select'&&selIdx>=0&&!dragging&&!resizing){const h=getResizeHandle(elements[selIdx],p.x,p.y);canvas.style.cursor=h?({nw:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',se:'nwse-resize'}[h]):(hitTest(p.x,p.y)>=0?'move':'default')}
   if(dragging&&selIdx>=0){const el=elements[selIdx],nx=p.x-dragOffX,ny=p.y-dragOffY;if(el.type==='rectangle'){el.x=nx;el.y=ny}else if(el.type==='line'){const dx=nx-Math.min(el.points[0],el.points[2]),dy=ny-Math.min(el.points[1],el.points[3]);el.points=[el.points[0]+dx,el.points[1]+dy,el.points[2]+dx,el.points[3]+dy]}else if(el.type==='point'){el.x=nx+el.radius;el.y=ny+el.radius}else{el.x=nx;el.y=ny}redraw();return}
-  if(resizing&&selIdx>=0){const el=elements[selIdx];if(el.type==='rectangle'){if(resizeHandle.includes('e'))el.width=Math.max(4,p.x-el.x);if(resizeHandle.includes('s'))el.height=Math.max(4,p.y-el.y);if(resizeHandle.includes('w')){const r=el.x+el.width;el.x=Math.min(p.x,r-4);el.width=r-el.x}if(resizeHandle.includes('n')){const b=el.y+el.height;el.y=Math.min(p.y,b-4);el.height=b-el.y}}else if(el.type==='line'){if(resizeHandle==='nw'||resizeHandle==='sw'){el.points[0]=p.x;el.points[1]=p.y}else{el.points[2]=p.x;el.points[3]=p.y}}else if(el.type==='point'){el.radius=Math.max(2,Math.round(Math.hypot(p.x-el.x,p.y-el.y)))}else{el.font_size=Math.max(6,Math.round(Math.abs(p.y-el.y)*1.2))}redraw();return}
-  if(!drawing)return;redraw();ctx.save();ctx.strokeStyle=$('draw-color').value;ctx.lineWidth=parseInt($('draw-lw').value)||2;ctx.setLineDash([4,4]);if(curTool==='rectangle')ctx.strokeRect(startX,startY,p.x-startX,p.y-startY);else if(curTool==='line'){ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(p.x,p.y);ctx.stroke()}ctx.restore()});
+  if(resizing&&selIdx>=0){const el=elements[selIdx];if(el.type==='rectangle'){if(resizeHandle.includes('e'))el.width=Math.max(4,p.x-el.x);if(resizeHandle.includes('s'))el.height=Math.max(4,p.y-el.y);if(resizeHandle.includes('w')){const r=el.x+el.width;el.x=Math.min(p.x,r-4);el.width=r-el.x}if(resizeHandle.includes('n')){const b=el.y+el.height;el.y=Math.min(p.y,b-4);el.height=b-el.y}}else if(el.type==='line'){if(resizeHandle==='nw'||resizeHandle==='sw'){el.points[0]=p.x;el.points[1]=p.y}else{el.points[2]=p.x;el.points[3]=p.y}}else if(el.type==='point'){el.radius=Math.max(2,Math.round(Math.hypot(p.x-el.x,p.y-el.y)))}else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'||el.type==='calendar'||el.type==='image'){if(resizeHandle.includes('e'))el.width=Math.max(8,p.x-el.x);if(resizeHandle.includes('s'))el.height=Math.max(8,p.y-el.y);if(resizeHandle.includes('w')){const r=el.x+el.width;el.x=Math.min(p.x,r-8);el.width=r-el.x}if(resizeHandle.includes('n')){const b=el.y+el.height;el.y=Math.min(p.y,b-8);el.height=b-el.y}}else{el.font_size=Math.max(6,Math.round(Math.abs(p.y-el.y)*1.2))}redraw();return}
+  if(!drawing)return;redraw();ctx.save();ctx.strokeStyle=$('draw-color').value;ctx.lineWidth=parseInt($('draw-lw').value)||2;ctx.setLineDash([4,4]);if(curTool==='rectangle'||curTool==='textbox')ctx.strokeRect(startX,startY,p.x-startX,p.y-startY);else if(curTool==='line'){ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(p.x,p.y);ctx.stroke()}ctx.restore()});
 
 canvas.addEventListener('mouseup',e=>{if(dragging){dragging=false;refreshList();showProps(selIdx);return}if(resizing){resizing=false;refreshList();showProps(selIdx);return}if(!drawing)return;drawing=false;const p=canvasPos(e),c=$('draw-color').value,lw=parseInt($('draw-lw').value)||2;
   if(curTool==='rectangle'){const x=Math.min(startX,p.x),y=Math.min(startY,p.y),w=Math.abs(p.x-startX),h=Math.abs(p.y-startY);if(w<2&&h<2)return;elements.push({type:'rectangle',x,y,width:w,height:h,outline:c,fill:$('fill-on').checked?$('fill-color').value:'',line_width:lw})}
   else if(curTool==='line'){if(Math.hypot(p.x-startX,p.y-startY)<2)return;elements.push({type:'line',points:[startX,startY,p.x,p.y],color:c,line_width:lw})}
+  else if(curTool==='textbox'){
+    const bx=Math.min(startX,p.x),by=Math.min(startY,p.y),bw=Math.abs(p.x-startX),bh=Math.abs(p.y-startY);
+    if(bw<8&&bh<8)return;
+    const tbMode=_tbMode||'static';
+    const base={x:bx,y:by,width:bw,height:bh,
+      color:$('draw-color').value,font_size:parseInt($('tb-fs').value)||20,
+      padding:parseInt($('tb-pad').value)||6,
+      line_spacing:parseInt($('tb-lsp').value)||2,
+      align:$('tb-align').value||'left',
+      valign:$('tb-valign').value||'top',
+      bg_color:$('tb-bg-on').checked?$('tb-bg').value:'',
+      border_color:$('tb-border-on').checked?$('tb-border').value:'',
+      border_width:1, clip:true, font_path:''};
+    let el;
+    if(tbMode==='entity'){
+      el={...base,type:'textbox_entity',entity_id:$('tb-eid').value||'',prefix:$('tb-pfx').value||'',suffix:$('tb-sfx').value||'',_state:''};
+    } else if(tbMode==='computed'){
+      el={...base,type:'textbox_computed',template:$('tb-tpl').value||'',_rendered:'{...}'};
+    } else {
+      el={...base,type:'textbox',text:($('tb-text').value||'示例文字').replace(/\n/g,'
+')};
+    }
+    elements.push(el);
+  }
   selIdx=elements.length-1;refreshList();redraw()});
 
 // ── Redraw ──
@@ -518,7 +581,89 @@ function redraw(){ctx.fillStyle=bgColor;ctx.fillRect(0,0,cW,cH);if(bgImg)ctx.dra
         ctx.fillText(rendered,el.x,el.y);
       }
     }
-    else if(el.type==='calendar'){_drawCalendarPreview(ctx,el)}
+    else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'){
+      const tbx=el.x,tby=el.y,tbw=el.width||120,tbh=el.height||60;
+      // 背景
+      if(el.bg_color){ctx.fillStyle=el.bg_color;ctx.fillRect(tbx,tby,tbw,tbh);}
+      // 边框
+      if(el.border_color){ctx.strokeStyle=el.border_color;ctx.lineWidth=el.border_width||1;ctx.strokeRect(tbx,tby,tbw,tbh);}
+      // 无背景时显示虚框提示
+      if(!el.bg_color&&!el.border_color){ctx.strokeStyle='rgba(124,61,143,0.45)';ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.strokeRect(tbx,tby,tbw,tbh);ctx.setLineDash([]);}
+      // 获取文本
+      let tbText='';
+      if(el.type==='textbox')tbText=el.text||'';
+      else if(el.type==='textbox_entity')tbText=(el.prefix||'')+(el._state||'{'+el.entity_id+'}')+(el.suffix||'');
+      else tbText=el._rendered||'{'+( el.template||'').substring(0,20)+'}';
+      // 自动换行绘制
+      const tbFs=el.font_size||20;const tbPad=el.padding||4;const tbLsp=el.line_spacing||2;
+      ctx.font=`${tbFs}px sans-serif`;ctx.fillStyle=el.color||'#000';ctx.textBaseline='top';
+      const tbInnerW=tbw-tbPad*2,tbInnerH=tbh-tbPad*2;
+      if(tbInnerW>0&&tbText){
+        // wrap
+        const tbLines=[];
+        for(const para of tbText.split('
+')){
+          if(!para){tbLines.push('');continue;}
+          let cur='';
+          for(const ch of para){
+            if(ctx.measureText(cur+ch).width<=tbInnerW)cur+=ch;
+            else{if(cur)tbLines.push(cur);cur=ch;}
+          }
+          if(cur)tbLines.push(cur);
+        }
+        const tbStep=tbFs+tbLsp;
+        const tbMaxLines=Math.max(1,Math.floor(tbInnerH/tbStep));
+        const showLines=tbLines.slice(0,tbMaxLines);
+        const totalH=showLines.length*tbStep-tbLsp;
+        let curY;
+        if(el.valign==='middle')curY=tby+tbPad+Math.max(0,(tbInnerH-totalH)/2);
+        else if(el.valign==='bottom')curY=tby+tbPad+Math.max(0,tbInnerH-totalH);
+        else curY=tby+tbPad;
+        for(const ln of showLines){
+          if(curY>tby+tbh-tbPad)break;
+          const lw=ctx.measureText(ln).width;
+          let lx;
+          if(el.align==='center')lx=tbx+tbPad+Math.max(0,(tbInnerW-lw)/2);
+          else if(el.align==='right')lx=tbx+tbPad+Math.max(0,tbInnerW-lw);
+          else lx=tbx+tbPad;
+          ctx.fillText(ln,lx,curY);curY+=tbStep;
+        }
+      }
+    }
+    else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'){
+    h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('宽','tbw',el.width||120,'number')+R('高','tbh',el.height||60,'number');
+    h+=R('字号','tbfs',el.font_size||20,'number')+R('内边距','tbpad',el.padding||4,'number')+R('行间距','tblsp',el.line_spacing||2,'number');
+    h+=R('文字色','c',el.color||'#000','color');
+    h+=`<div class="row"><label>对齐</label><select id="p-tbalign" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="left"${el.align==='left'?' selected':''}>左</option><option value="center"${el.align==='center'?' selected':''}>居中</option><option value="right"${el.align==='right'?' selected':''}>右</option></select></div>`;
+    h+=`<div class="row"><label>垂直</label><select id="p-tbvalign" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="top"${el.valign==='top'?' selected':''}>顶</option><option value="middle"${el.valign==='middle'?' selected':''}>中</option><option value="bottom"${el.valign==='bottom'?' selected':''}>底</option></select></div>`;
+    h+=`<div class="row"><label>背景色</label><input type="color" id="p-tbbg" value="${el.bg_color||'#ffffff'}"><label style="width:auto"><input type="checkbox" id="p-tbbg-on"${el.bg_color?' checked':''}> 启用</label></div>`;
+    h+=`<div class="row"><label>边框色</label><input type="color" id="p-tbborder" value="${el.border_color||'#000000'}"><label style="width:auto"><input type="checkbox" id="p-tbborder-on"${el.border_color?' checked':''}> 启用</label></div>`;
+    if(el.type==='textbox'){
+      h+=`<div style="font-size:10px;color:var(--text2);margin-top:5px">文字内容（\n换行）:</div>`;
+      h+=`<textarea id="p-tbtext" style="width:100%;height:60px;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none">${el.text||''}</textarea>`;
+    } else if(el.type==='textbox_entity'){
+      h+=R('实体','tbeid',el.entity_id||'');h+=R('前缀','tbpfx',el.prefix||'');h+=R('后缀','tbsfx',el.suffix||'');
+      h+=`<button class="btn btn-s btn-sm" style="margin-top:3px" onclick="pickEntityForTbProp()">🔍 选择实体</button>`;
+      h+=` <button class="btn btn-s btn-sm" onclick="refreshTbEntityState()">🔄 刷新状态</button>`;
+    } else if(el.type==='textbox_computed'){
+      h+=`<div style="font-size:10px;color:var(--text2);margin-top:5px">Jinja2 模板:</div>`;
+      h+=`<textarea id="p-tbtpl" style="width:100%;height:60px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none">${el.template||''}</textarea>`;
+      h+=`<button class="btn btn-s btn-sm" style="margin-top:3px" onclick="previewTbComputed()">▶ 预览</button>`;
+    }
+  }
+  else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'){
+    el.x=gn('x');el.y=gn('y');el.width=gn('tbw')||120;el.height=gn('tbh')||60;
+    el.font_size=gn('tbfs')||20;el.padding=gn('tbpad');el.line_spacing=gn('tblsp');
+    el.color=g('c');
+    const alignEl=$('p-tbalign');if(alignEl)el.align=alignEl.value;
+    const valignEl=$('p-tbvalign');if(valignEl)el.valign=valignEl.value;
+    const bgOn=$('p-tbbg-on');el.bg_color=(bgOn&&bgOn.checked)?g('tbbg'):'';
+    const bdOn=$('p-tbborder-on');el.border_color=(bdOn&&bdOn.checked)?g('tbborder'):'';
+    if(el.type==='textbox'){const ta=$('p-tbtext');if(ta)el.text=ta.value;}
+    else if(el.type==='textbox_entity'){el.entity_id=g('tbeid');el.prefix=g('tbpfx');el.suffix=g('tbsfx');}
+    else if(el.type==='textbox_computed'){const ta=$('p-tbtpl');if(ta)el.template=ta.value;}
+  }
+  else if(el.type==='calendar'){_drawCalendarPreview(ctx,el)}
     else if(el.type==='image'){
       const iw=el.width||64,ih=el.height||64;
       if(el._img_obj){
@@ -545,8 +690,8 @@ function redraw(){ctx.fillStyle=bgColor;ctx.fillRect(0,0,cW,cH);if(bgImg)ctx.dra
 // ── Element list ──
 function refreshList(){const list=$('el-list');$('el-count').textContent=`(${elements.length})`;list.innerHTML='';
   elements.forEach((el,i)=>{const d=document.createElement('div');d.className='el-item'+(i===selIdx?' sel':'');
-    const bc=el.type==='entity_text'?'entity':el.type==='computed_text'?'computed':el.type==='rectangle'?'rect':el.type==='calendar'?'calendar':el.type==='image'?'image':el.type;
-    const label=el.type==='entity_text'?'实体':el.type==='computed_text'?'代码':el.type==='calendar'?'日历':el.type==='image'?'图标':el.type;
+    const bc=el.type==='entity_text'?'entity':el.type==='computed_text'?'computed':el.type==='rectangle'?'rect':el.type==='calendar'?'calendar':el.type==='image'?'image':(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed')?'textbox':el.type;
+    const label=el.type==='entity_text'?'实体':el.type==='computed_text'?'代码':el.type==='calendar'?'日历':el.type==='image'?'图标':el.type==='textbox'?'文本框':el.type==='textbox_entity'?'框-实体':el.type==='textbox_computed'?'框-代码':el.type;
     let info='';
     if(el.type==='rectangle')info=`${el.x},${el.y} ${el.width}×${el.height}`;
     else if(el.type==='line')info=`(${el.points[0]},${el.points[1]})→(${el.points[2]},${el.points[3]})`;
@@ -556,6 +701,9 @@ function refreshList(){const list=$('el-list');$('el-count').textContent=`(${ele
     else if(el.type==='computed_text')info=el.template?.substring(0,30)||'';
     else if(el.type==='calendar'){const ym=(el.year||'??')+'/'+(el.month||'??');info=`${ym} ${el.width||380}×${el.height||280} ${(el.calendar_entities||[]).length}实体`;}
     else if(el.type==='image'){const name=(el.path||'').split('/').pop()||'未设置';info=`${name} ${el.width||64}×${el.height||64}`;}
+    else if(el.type==='textbox')info=`"${(el.text||'').substring(0,18)}" ${el.width||120}×${el.height||60}`;
+    else if(el.type==='textbox_entity')info=`${el.entity_id||'?'} ${el.width||120}×${el.height||60}`;
+    else if(el.type==='textbox_computed')info=`${(el.template||'').substring(0,20)} ${el.width||120}×${el.height||60}`;
     d.innerHTML=`<span class="badge ${bc}">${label}</span><span class="info">${info}</span><button class="x-btn" onclick="event.stopPropagation();delElem(${i})">×</button>`;
     d.addEventListener('click',()=>{selIdx=i;refreshList();showProps(i);redraw()});list.appendChild(d)});
   if(selIdx>=0&&selIdx<elements.length)showProps(selIdx);else hideProps()}
@@ -662,10 +810,31 @@ function clearAll(){if(elements.length&&!confirm('清空？'))return;elements=[]
 let allEntities=[],entityPickCb=null;
 async function loadEntities(){try{const r=await fetch('/api/epd_display/entities',{headers:authH()});if(r.ok)allEntities=await r.json()}catch(e){}}
 loadEntities();
+// ── Textbox tool helpers ──
+let _tbMode='static';
+function setTbMode(m){_tbMode=m;
+  ['static','entity','computed'].forEach(n=>{
+    $('tb-sub-'+n).style.display=n===m?'block':'none';
+    $('tb-mode-'+n).classList.toggle('btn-a',n===m);
+    $('tb-mode-'+n).classList.toggle('btn-s',n!==m);
+  });}
+function pickEntityForTb(){entityPickCb=(eid,state)=>{$('tb-eid').value=eid;};openEntityPicker()}
+function pickEntityForTbProp(){entityPickCb=(eid,state)=>{
+  const inp=$('p-tbeid');if(inp)inp.value=eid;
+  if(selIdx>=0&&elements[selIdx]){elements[selIdx].entity_id=eid;elements[selIdx]._state=state;redraw();}
+};openEntityPicker()}
+async function refreshTbEntityState(){if(selIdx<0)return;const el=elements[selIdx];if(el.type!=='textbox_entity')return;
+  await loadEntities();const f=allEntities.find(e=>e.entity_id===el.entity_id);el._state=f?f.state:'N/A';redraw();toast('已刷新')}
+async function previewTbComputed(){if(selIdx<0)return;const el=elements[selIdx];if(el.type!=='textbox_computed')return;
+  const ta=$('p-tbtpl');if(ta)el.template=ta.value;
+  try{const r=await fetch('/api/epd_display/template_preview',{method:'POST',headers:authH(),body:JSON.stringify({template:el.template})});
+    const j=await r.json();if(r.ok){el._rendered=j.result;redraw();toast('预览: '+j.result.substring(0,40))}else toast('❌ '+j.error)
+  }catch(e){toast('❌ '+e.message)}}
+
 function addEntityText(){entityPickCb=(eid,state)=>{elements.push({type:'entity_text',x:50,y:50,entity_id:eid,prefix:'',suffix:'',color:'#000000',font_size:24,font_path:'',_state:state});selIdx=elements.length-1;refreshList();redraw()};openEntityPicker()}
 function pickEntityForProp(){entityPickCb=(eid,state)=>{const inp=$('p-eid');if(inp)inp.value=eid;if(selIdx>=0){elements[selIdx].entity_id=eid;elements[selIdx]._state=state}redraw()};openEntityPicker()}
 async function refreshEntityState(){if(selIdx<0)return;const el=elements[selIdx];if(el.type!=='entity_text')return;await loadEntities();const f=allEntities.find(e=>e.entity_id===el.entity_id);el._state=f?f.state:'N/A';redraw();toast('已刷新')}
-async function refreshAllStates(){await loadEntities();elements.forEach(el=>{if(el.type==='entity_text'){const f=allEntities.find(e=>e.entity_id===el.entity_id);el._state=f?f.state:'N/A'}});redraw()}
+async function refreshAllStates(){await loadEntities();elements.forEach(el=>{if(el.type==='entity_text'||el.type==='textbox_entity'){const f=allEntities.find(e=>e.entity_id===el.entity_id);el._state=f?f.state:'N/A'}});redraw()}
 function openEntityPicker(){$('entity-search').value='';renderEntityList('');$('entity-modal').classList.add('open');setTimeout(()=>$('entity-search').focus(),100)}
 function filterEntities(){renderEntityList($('entity-search').value.toLowerCase())}
 function renderEntityList(f){const c=$('entity-list-container');c.innerHTML='';allEntities.filter(e=>!f||e.entity_id.toLowerCase().includes(f)||(e.name||'').toLowerCase().includes(f)).slice(0,200).forEach(e=>{const d=document.createElement('div');d.className='entity-row';d.innerHTML=`<span class="eid">${e.entity_id}</span><span class="ename">${e.name||''}</span><span class="estate">${e.state}${e.unit?' '+e.unit:''}</span>`;d.addEventListener('click',()=>{closeModal('entity-modal');if(entityPickCb)entityPickCb(e.entity_id,e.state)});c.appendChild(d)})}

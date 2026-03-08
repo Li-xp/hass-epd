@@ -577,6 +577,140 @@ def delete_template(config_dir: str, name: str) -> bool:
 
 # ─── Image generation ─────────────────────────────────────
 
+def _wrap_text(text: str, font, max_width: int) -> list[str]:
+    """
+    Word-wrap `text` to fit within `max_width` pixels.
+    Handles CJK (no spaces) and Latin (space-separated) text.
+    Explicit newlines (\n) are always honoured.
+    """
+    lines = []
+    for paragraph in text.split("\n"):
+        if not paragraph:
+            lines.append("")
+            continue
+        # Try to fit the whole paragraph first
+        bbox = font.getbbox(paragraph)
+        if (bbox[2] - bbox[0]) <= max_width:
+            lines.append(paragraph)
+            continue
+        # Need to wrap
+        cur_line = ""
+        for ch in paragraph:
+            test = cur_line + ch
+            bbox = font.getbbox(test)
+            if (bbox[2] - bbox[0]) <= max_width:
+                cur_line = test
+            else:
+                if cur_line:
+                    lines.append(cur_line)
+                cur_line = ch
+        if cur_line:
+            lines.append(cur_line)
+    return lines
+
+
+def _draw_textbox(draw: "ImageDraw.ImageDraw", img: "Image.Image", elem: dict,
+                  text: str):
+    """
+    Render `text` inside a box defined by elem x/y/width/height.
+
+    Supported elem fields:
+      x, y, width, height   – box geometry
+      color                 – text colour (default black)
+      font_path, font_size  – font
+      bg_color              – box background fill (default none/transparent)
+      border_color          – box border colour (default none)
+      border_width          – border line width (default 1)
+      padding               – inner padding px (default 4)
+      line_spacing          – extra px between lines (default 2)
+      valign                – "top" | "middle" | "bottom" (default "top")
+      align                 – "left" | "center" | "right" (default "left")
+      clip                  – if true, text is clipped to box (default true)
+    """
+    x      = int(elem.get("x", 0))
+    y      = int(elem.get("y", 0))
+    width  = int(elem.get("width", 200))
+    height = int(elem.get("height", 100))
+    color  = _parse_color(elem.get("color", "black"))
+    font   = _resolve_font(elem.get("font_path"), elem.get("font_size", 20))
+    pad    = int(elem.get("padding", 4))
+    lsp    = int(elem.get("line_spacing", 2))
+    valign = elem.get("valign", "top")
+    align  = elem.get("align", "left")
+    clip   = elem.get("clip", True)
+
+    bg_color     = elem.get("bg_color", "")
+    border_color = elem.get("border_color", "")
+    border_width = int(elem.get("border_width", 1))
+
+    # Draw background
+    if bg_color:
+        draw.rectangle([x, y, x + width, y + height],
+                       fill=_parse_color(bg_color))
+
+    # Draw border
+    if border_color:
+        draw.rectangle([x, y, x + width, y + height],
+                       outline=_parse_color(border_color),
+                       width=border_width)
+
+    if not text:
+        return
+
+    inner_w = width  - pad * 2
+    inner_h = height - pad * 2
+    if inner_w <= 0 or inner_h <= 0:
+        return
+
+    # Wrap text
+    lines = _wrap_text(str(text), font, inner_w)
+
+    # Measure line height
+    sample_bbox = font.getbbox("Ag测")
+    line_h = sample_bbox[3] - sample_bbox[1]
+    step   = line_h + lsp
+
+    # Clip lines that exceed box height
+    max_lines = max(1, inner_h // step)
+    if clip and len(lines) > max_lines:
+        lines = lines[:max_lines]
+        # Mark last line with ellipsis if clipped
+        if lines:
+            while lines[-1]:
+                trimmed = lines[-1][:-1]
+                test = trimmed + "…"
+                bbox = font.getbbox(test)
+                if (bbox[2] - bbox[0]) <= inner_w:
+                    lines[-1] = test
+                    break
+                lines[-1] = trimmed
+
+    total_h = len(lines) * step - lsp
+
+    # Vertical alignment
+    if valign == "middle":
+        text_y = y + pad + max(0, (inner_h - total_h) // 2)
+    elif valign == "bottom":
+        text_y = y + pad + max(0, inner_h - total_h)
+    else:
+        text_y = y + pad
+
+    # Draw each line
+    for line in lines:
+        if text_y > y + height - pad:
+            break
+        line_bbox = font.getbbox(line) if line else (0, 0, 0, line_h)
+        lw = line_bbox[2] - line_bbox[0]
+        if align == "center":
+            text_x = x + pad + max(0, (inner_w - lw) // 2)
+        elif align == "right":
+            text_x = x + pad + max(0, inner_w - lw)
+        else:
+            text_x = x + pad
+        draw.text((text_x, text_y), line, fill=color, font=font)
+        text_y += step
+
+
 def generate_image(
     config_dir: str,
     width: int,
@@ -637,6 +771,26 @@ def generate_image(
             color = _parse_color(elem.get("color", "black"))
             font  = _resolve_font(elem.get("font_path"), elem.get("font_size", 20))
             draw.text((x, y), text, fill=color, font=font)
+
+        elif etype == "textbox":
+            # Static text with word-wrap inside a bounding box
+            text = elem.get("text", "")
+            _draw_textbox(draw, img, elem, text)
+
+        elif etype == "textbox_entity":
+            # entity_text with word-wrap
+            eid      = elem.get("entity_id", "")
+            prefix   = elem.get("prefix", "")
+            suffix   = elem.get("suffix", "")
+            state_v  = entity_states.get(eid, "N/A")
+            text     = f"{prefix}{state_v}{suffix}"
+            _draw_textbox(draw, img, elem, text)
+
+        elif etype == "textbox_computed":
+            # computed_text with word-wrap
+            rendered = computed_results.get(str(idx), elem.get("template", ""))
+            rendered = str(rendered).strip()
+            _draw_textbox(draw, img, elem, rendered)
 
         elif etype == "entity_text":
             x, y      = elem.get("x", 0), elem.get("y", 0)
