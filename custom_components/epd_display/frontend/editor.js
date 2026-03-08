@@ -215,40 +215,7 @@ function redraw(){ctx.fillStyle=bgColor;ctx.fillRect(0,0,cW,cH);if(bgImg)ctx.dra
         }
       }
     }
-    else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'){
-    h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('宽','tbw',el.width||120,'number')+R('高','tbh',el.height||60,'number');
-    h+=R('字号','tbfs',el.font_size||20,'number')+R('内边距','tbpad',el.padding||4,'number')+R('行间距','tblsp',el.line_spacing||2,'number');
-    h+=R('文字色','c',el.color||'#000','color');
-    h+=`<div class="row"><label>对齐</label><select id="p-tbalign" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="left"${el.align==='left'?' selected':''}>左</option><option value="center"${el.align==='center'?' selected':''}>居中</option><option value="right"${el.align==='right'?' selected':''}>右</option></select></div>`;
-    h+=`<div class="row"><label>垂直</label><select id="p-tbvalign" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="top"${el.valign==='top'?' selected':''}>顶</option><option value="middle"${el.valign==='middle'?' selected':''}>中</option><option value="bottom"${el.valign==='bottom'?' selected':''}>底</option></select></div>`;
-    h+=`<div class="row"><label>背景色</label><input type="color" id="p-tbbg" value="${el.bg_color||'#ffffff'}"><label style="width:auto"><input type="checkbox" id="p-tbbg-on"${el.bg_color?' checked':''}> 启用</label></div>`;
-    h+=`<div class="row"><label>边框色</label><input type="color" id="p-tbborder" value="${el.border_color||'#000000'}"><label style="width:auto"><input type="checkbox" id="p-tbborder-on"${el.border_color?' checked':''}> 启用</label></div>`;
-    if(el.type==='textbox'){
-      h+=`<div style="font-size:10px;color:var(--text2);margin-top:5px">文字内容（\n换行）:</div>`;
-      h+=`<textarea id="p-tbtext" style="width:100%;height:60px;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none">${el.text||''}</textarea>`;
-    } else if(el.type==='textbox_entity'){
-      h+=R('实体','tbeid',el.entity_id||'');h+=R('前缀','tbpfx',el.prefix||'');h+=R('后缀','tbsfx',el.suffix||'');
-      h+=`<button class="btn btn-s btn-sm" style="margin-top:3px" data-action="pickEntityForTbProp">🔍 选择实体</button>`;
-      h+=` <button class="btn btn-s btn-sm" data-action="refreshTbEntityState">🔄 刷新状态</button>`;
-    } else if(el.type==='textbox_computed'){
-      h+=`<div style="font-size:10px;color:var(--text2);margin-top:5px">Jinja2 模板:</div>`;
-      h+=`<textarea id="p-tbtpl" style="width:100%;height:60px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none">${el.template||''}</textarea>`;
-      h+=`<button class="btn btn-s btn-sm" style="margin-top:3px" data-action="previewTbComputed">▶ 预览</button>`;
-    }
-  }
-  else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'){
-    el.x=gn('x');el.y=gn('y');el.width=gn('tbw')||120;el.height=gn('tbh')||60;
-    el.font_size=gn('tbfs')||20;el.padding=gn('tbpad');el.line_spacing=gn('tblsp');
-    el.color=g('c');
-    const alignEl=$('p-tbalign');if(alignEl)el.align=alignEl.value;
-    const valignEl=$('p-tbvalign');if(valignEl)el.valign=valignEl.value;
-    const bgOn=$('p-tbbg-on');el.bg_color=(bgOn&&bgOn.checked)?g('tbbg'):'';
-    const bdOn=$('p-tbborder-on');el.border_color=(bdOn&&bdOn.checked)?g('tbborder'):'';
-    if(el.type==='textbox'){const ta=$('p-tbtext');if(ta)el.text=ta.value;}
-    else if(el.type==='textbox_entity'){el.entity_id=g('tbeid');el.prefix=g('tbpfx');el.suffix=g('tbsfx');}
-    else if(el.type==='textbox_computed'){const ta=$('p-tbtpl');if(ta)el.template=ta.value;}
-  }
-  else if(el.type==='calendar'){_drawCalendarPreview(ctx,el)}
+    else if(el.type==='calendar'){_drawCalendarPreview(ctx,el)}
     else if(el.type==='image'){
       const iw=el.width||64,ih=el.height||64;
       if(el._img_obj){
@@ -327,6 +294,44 @@ function showProps(idx){const el=elements[idx];if(!el){hideProps();return}$('pro
     if(el._img_obj)h+=`<div style="margin-top:6px"><img src="${el._img_obj.src}" style="max-width:100%;max-height:80px;border-radius:3px;border:1px solid var(--bd)"></div>`;
     else if(el.path&&!el.svg_content)h+=`<div style="font-size:10px;color:var(--warn);margin-top:4px">⚠ 预览未加载</div>`;
   }
+  else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'){
+    // ── 切换内容类型 ──
+    const tbTypes=[['textbox','静态文字'],['textbox_entity','传感器'],['textbox_computed','Jinja2代码']];
+    h+=`<div style="margin-bottom:6px"><div style="font-size:10px;color:var(--text2);margin-bottom:3px">内容类型</div><div class="btn-group">`;
+    tbTypes.forEach(([t,label])=>{
+      const on=el.type===t;
+      h+=`<button class="btn btn-sm ${on?'btn-a':'btn-s'}" data-action="switchTbType" data-arg="${t}">${label}</button>`;
+    });
+    h+=`</div></div>`;
+    // ── 位置尺寸 ──
+    h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('宽','tbw',el.width||120,'number')+R('高','tbh',el.height||60,'number');
+    // ── 字体样式 ──
+    h+=R('字号','tbfs',el.font_size||20,'number')+R('内边距','tbpad',el.padding||4,'number')+R('行间距','tblsp',el.line_spacing||2,'number');
+    h+=R('文字色','c',el.color||'#000','color');
+    h+=`<div class="row"><label>对齐</label><select id="p-tbalign" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="left"${el.align==='left'?' selected':''}>左对齐</option><option value="center"${el.align==='center'?' selected':''}>居中</option><option value="right"${el.align==='right'?' selected':''}>右对齐</option></select></div>`;
+    h+=`<div class="row"><label>垂直</label><select id="p-tbvalign" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px"><option value="top"${el.valign==='top'?' selected':''}>顶部</option><option value="middle"${el.valign==='middle'?' selected':''}>居中</option><option value="bottom"${el.valign==='bottom'?' selected':''}>底部</option></select></div>`;
+    h+=`<div class="row"><label>背景色</label><input type="color" id="p-tbbg" value="${el.bg_color||'#ffffff'}"><label style="width:auto;font-size:10px;display:flex;align-items:center;gap:3px"><input type="checkbox" id="p-tbbg-on"${el.bg_color?' checked':''}> 启用</label></div>`;
+    h+=`<div class="row"><label>边框色</label><input type="color" id="p-tbborder" value="${el.border_color||'#000000'}"><label style="width:auto;font-size:10px;display:flex;align-items:center;gap:3px"><input type="checkbox" id="p-tbborder-on"${el.border_color?' checked':''}> 启用</label></div>`;
+    // ── 内容区（按类型显示）──
+    h+=`<div style="border-top:1px solid var(--bd);margin:7px 0 5px"></div>`;
+    if(el.type==='textbox'){
+      h+=`<div style="font-size:10px;color:var(--text2);margin-bottom:3px">文字内容（\\n 换行）:</div>`;
+      h+=`<textarea id="p-tbtext" style="width:100%;height:72px;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none">${(el.text||'').replace(/</g,'&lt;')}</textarea>`;
+    } else if(el.type==='textbox_entity'){
+      h+=`<div style="font-size:10px;color:var(--text2);margin-bottom:3px">传感器实体:</div>`;
+      h+=`<div style="display:flex;gap:4px;margin-bottom:4px"><input type="text" id="p-tbeid" value="${el.entity_id||''}" placeholder="sensor.xxx" style="flex:1;background:var(--bg);border:1px solid var(--bd);color:var(--text);padding:4px 6px;border-radius:var(--r);font-size:11px;outline:none"><button class="btn btn-s btn-sm" data-action="pickEntityForTbProp">🔍</button></div>`;
+      h+=R('前缀','tbpfx',el.prefix||'')+R('后缀','tbsfx',el.suffix||'');
+      const curState=el._state?`<span style="color:var(--ac)">${el._state}</span>`:`<span style="color:var(--text3)">未加载</span>`;
+      h+=`<div style="font-size:10px;color:var(--text2);margin-top:4px">当前值: ${curState}</div>`;
+      h+=`<button class="btn btn-s btn-sm" style="margin-top:5px" data-action="refreshTbEntityState">🔄 刷新状态</button>`;
+    } else if(el.type==='textbox_computed'){
+      h+=`<div style="font-size:10px;color:var(--text2);margin-bottom:3px">Jinja2 模板表达式:</div>`;
+      h+=`<textarea id="p-tbtpl" style="width:100%;height:80px;background:var(--bg);color:#a6e3a1;font-family:var(--mono);font-size:11px;border:1px solid var(--bd);border-radius:var(--r);padding:5px;resize:vertical;outline:none">${(el.template||'').replace(/</g,'&lt;')}</textarea>`;
+      const previewVal=el._rendered&&el._rendered!=='{...}'?`<span style="color:var(--ac)">${el._rendered}</span>`:`<span style="color:var(--text3)">点击预览</span>`;
+      h+=`<div style="font-size:10px;color:var(--text2);margin-top:4px">预览结果: ${previewVal}</div>`;
+      h+=`<button class="btn btn-a btn-sm" style="margin-top:5px" data-action="previewTbComputed">▶ 预览</button>`;
+    }
+  }
   else if(el.type==='calendar'){
     h+=R('X','x',el.x,'number')+R('Y','y',el.y,'number')+R('宽','cw',el.width||380,'number')+R('高','ch',el.height||280,'number');
     h+=R('年','year',el.year||'','number')+R('月','month',el.month||'','number');
@@ -353,6 +358,18 @@ function applyProps(){if(selIdx<0)return;const el=elements[selIdx],g=id=>{const 
     const asp=$('p-aspect');if(asp)el.keep_aspect=asp.checked;
     const pp=$('p-imgpath');if(pp&&pp.value.trim()!==el.path){el.path=pp.value.trim();el._img_obj=null;_loadImgObj(el);}
   }
+  else if(el.type==='textbox'||el.type==='textbox_entity'||el.type==='textbox_computed'){
+    el.x=gn('x');el.y=gn('y');el.width=gn('tbw')||120;el.height=gn('tbh')||60;
+    el.font_size=gn('tbfs')||20;el.padding=gn('tbpad');el.line_spacing=gn('tblsp');
+    el.color=g('c');
+    const alignEl=$('p-tbalign');if(alignEl)el.align=alignEl.value;
+    const valignEl=$('p-tbvalign');if(valignEl)el.valign=valignEl.value;
+    const bgOn=$('p-tbbg-on');el.bg_color=(bgOn&&bgOn.checked)?g('tbbg'):'';
+    const bdOn=$('p-tbborder-on');el.border_color=(bdOn&&bdOn.checked)?g('tbborder'):'';
+    if(el.type==='textbox'){const ta=$('p-tbtext');if(ta)el.text=ta.value;}
+    else if(el.type==='textbox_entity'){el.entity_id=g('tbeid');el.prefix=g('tbpfx');el.suffix=g('tbsfx');}
+    else if(el.type==='textbox_computed'){const ta=$('p-tbtpl');if(ta)el.template=ta.value;}
+  }
   else if(el.type==='calendar'){
     el.x=gn('x');el.y=gn('y');el.width=gn('cw')||380;el.height=gn('ch')||280;
     const yr=gn('year');el.year=yr||null;
@@ -362,6 +379,37 @@ function applyProps(){if(selIdx<0)return;const el=elements[selIdx],g=id=>{const 
     const entsEl=$('p-cal-ents');if(entsEl)el.calendar_entities=entsEl.value.split(',').map(s=>s.trim()).filter(Boolean);
   }
   refreshList();redraw()}
+
+// 切换文本框内容类型（保留位置/尺寸/样式，只换 type 和内容字段）
+function switchTbType(newType){
+  if(selIdx<0)return;
+  const el=elements[selIdx];
+  if(!el||(el.type!=='textbox'&&el.type!=='textbox_entity'&&el.type!=='textbox_computed'))return;
+  if(el.type===newType)return;
+  // 先保存当前面板里的值
+  const g=id=>{const i=document.getElementById('p-'+id);return i?i.value:''};
+  const base={x:el.x,y:el.y,width:el.width,height:el.height,
+    font_size:parseInt(g('tbfs'))||el.font_size||20,
+    padding:parseInt(g('tbpad'))||el.padding||4,
+    line_spacing:parseInt(g('tblsp'))||el.line_spacing||2,
+    color:g('c')||el.color||'#000',
+    align:(document.getElementById('p-tbalign')||{}).value||el.align||'left',
+    valign:(document.getElementById('p-tbvalign')||{}).value||el.valign||'top',
+    bg_color:(document.getElementById('p-tbbg-on')?.checked)?g('tbbg'):el.bg_color||'',
+    border_color:(document.getElementById('p-tbborder-on')?.checked)?g('tbborder'):el.border_color||'',
+  };
+  // 按新类型建立内容字段
+  if(newType==='textbox'){
+    // 尽量保留旧内容
+    const oldText=el.text||(el.type==='textbox_entity'?((el.prefix||'')+(el._state||el.entity_id||'')+(el.suffix||'')):el._rendered||'');
+    elements[selIdx]={...base,type:'textbox',text:oldText};
+  }else if(newType==='textbox_entity'){
+    elements[selIdx]={...base,type:'textbox_entity',entity_id:el.entity_id||'',prefix:el.prefix||'',suffix:el.suffix||'',_state:el._state||''};
+  }else if(newType==='textbox_computed'){
+    elements[selIdx]={...base,type:'textbox_computed',template:el.template||'',_rendered:el._rendered||'{...}'};
+  }
+  refreshList();showProps(selIdx);redraw();
+}
 
 async function previewComputed(){if(selIdx<0)return;const el=elements[selIdx];if(el.type!=='computed_text')return;
   const tpl=$('p-tpl');if(tpl)el.template=tpl.value;
@@ -868,6 +916,7 @@ const _actionMap = {
   pickEntityForTbProp:    () => pickEntityForTbProp(),
   refreshTbEntityState:   () => refreshTbEntityState(),
   previewTbComputed:      () => previewTbComputed(),
+  switchTbType:           t  => switchTbType(t),
   setTbMode:              m  => setTbMode(m),
   pickEntityForTb:        () => pickEntityForTb(),
   clearPropSvgContent:    () => clearPropSvgContent(),
