@@ -1,12 +1,14 @@
 {
   "domain": "epd_display",
   "name": "EPD E-Paper Display",
-  "codeowners": [],
+  "codeowners": [
+    "@Sakina"
+  ],
   "config_flow": true,
   "dependencies": ["http"],
-  "documentation": "https://github.com/your-repo/epd_display",
+  "documentation": "https://github.com/Li-xp/hass-epd",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/your-repo/epd_display/issues",
+  "issue_tracker": "https://github.com/Li-xp/hass-epd/issues",
   "requirements": ["Pillow>=9.0.0"],
   "version": "1.2.0"
 }

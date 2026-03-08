@@ -1,0 +1,42 @@
+[Unit]
+Description=EPD E-Paper Display BLE Control Server
+Documentation=https://github.com/your-repo/epd_display
+After=network.target bluetooth.target
+Wants=bluetooth.target
+
+[Service]
+# ── 运行用户（需有蓝牙权限，或改为 root）──────────────────────────
+User=pi
+Group=pi
+
+# ── 工作目录：epd.py 和 epd_server.py 所在目录 ───────────────────
+WorkingDirectory=/home/pi/epd
+
+# ── 启动命令：使用虚拟环境中的 Python ────────────────────────────
+ExecStart=/home/pi/epd/venv/bin/python epd_server.py
+
+# ── 环境变量（按实际情况修改）────────────────────────────────────
+Environment="EPD_DEVICE_NAME=NRF_EPD_3D56"
+Environment="EPD_CANVAS=7.5_800_480"
+Environment="EPD_DRIVER=07"
+Environment="EPD_DITHER_MODE=threeColor"
+Environment="EPD_AUTO_CONNECT=false"
+Environment="EPD_UPLOAD_DIR=/tmp/epd_images"
+
+# ── 重启策略 ─────────────────────────────────────────────────────
+Restart=on-failure
+RestartSec=10s
+StartLimitIntervalSec=60s
+StartLimitBurst=3
+
+# ── 输出日志 ─────────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=epd-server
+
+# ── 安全加固（可选）─────────────────────────────────────────────
+# PrivateTmp=true
+# NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
